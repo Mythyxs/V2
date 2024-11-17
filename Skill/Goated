@@ -36,12 +36,12 @@ while true do
     visualRightLeg.Massless = true
 
     -- Set hitbox legs size and properties
-    leftLeg.Size = Vector3.new(30, 2, 30)
+    leftLeg.Size = Vector3.new(20, 2, 20)
     leftLeg.CanCollide = false
     leftLeg.Transparency = 1
     leftLeg.Massless = true
 
-    rightLeg.Size = Vector3.new(30, 2, 30)
+    rightLeg.Size = Vector3.new(20, 2, 20)
     rightLeg.CanCollide = false
     rightLeg.Transparency = 1
     rightLeg.Massless = true

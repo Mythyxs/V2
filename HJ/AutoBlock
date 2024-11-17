@@ -1,4 +1,3 @@
-wait(2)
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -67,7 +66,6 @@ end
 local function simulateSpacePress()
     if not running or not blockingEnabled then return end
     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.ButtonY, false, game)
-    task.wait(0.1)
     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.ButtonY, false, game)
 end
 

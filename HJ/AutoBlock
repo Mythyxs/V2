@@ -73,7 +73,6 @@ end
 local function isTeammate(model)
     local highlight = model:FindFirstChild("Highlight")
     if highlight and highlight.Enabled then
-        print("Detected teammate:", model.Name)
         return true
     end
     return false
@@ -104,7 +103,6 @@ local function monitorPlayers()
                                 local animationId = track.Animation.AnimationId
                                 -- Check if the animation is in the detection list and hasn't been processed yet
                                 if animationIdsToDetect[animationId] and not processedAnimations[animationId] then
-                                    print("Detected animation:", animationIdsToDetect[animationId], blockingEnabled and "- Simulating space press!" or "- Blocking disabled.")
                                     simulateSpacePress()
                                     processedAnimations[animationId] = true
                                 end
@@ -145,12 +143,10 @@ end
 
 -- Function to clean up and stop the script
 local function cleanupScript()
-    print("Cleaning up script...")
     running = false
     processedAnimations = {}
     animationIdsToDetect = {}
     game:GetService("RunService").Stepped:Wait() -- Wait one frame to ensure all threads stop
-    print("Script removed successfully.")
 end
 
 -- Bind toggle and panic keys
@@ -160,7 +156,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             cleanupScript()
         elseif input.KeyCode == Enum.KeyCode.DPadUp then
             blockingEnabled = not blockingEnabled
-            print("Blocking is now", blockingEnabled and "enabled" or "disabled")
         end
     end
 end)

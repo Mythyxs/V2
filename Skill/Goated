@@ -8,12 +8,14 @@ end)
 -- Main loop
 while true do
     -- Keep Stamina and Flow at 100
-    workspace.Players.pr4ylow.PlayerInfo.Stamina.Value = 100
-    workspace.Players.pr4ylow.PlayerInfo.JumpMultiplier.Value = 2
+    local localPlayer = game.Players.LocalPlayer
+    local playerInfo = workspace.Players[localPlayer.Name].PlayerInfo
+    playerInfo.Stamina.Value = 100
+    playerInfo.JumpMultiplier.Value = 2
 
     -- Modify legs
-    local leftLeg = workspace.Players.pr4ylow["Left Leg"]
-    local rightLeg = workspace.Players.pr4ylow["Right Leg"]
+    local leftLeg = workspace.Players[localPlayer.Name]["Left Leg"]
+    local rightLeg = workspace.Players[localPlayer.Name]["Right Leg"]
 
     -- Store original sizes
     local originalSize = Vector3.new(1, 2, 1)

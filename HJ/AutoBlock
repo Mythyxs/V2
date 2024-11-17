@@ -65,6 +65,7 @@ end
 -- Function to simulate a space key press
 local function simulateSpacePress()
     if not running or not blockingEnabled then return end
+    wait(0.2)
     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.ButtonY, false, game)
     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.ButtonY, false, game)
 end
@@ -97,7 +98,7 @@ local function monitorPlayers()
                     local myPosition = myCharacter and myCharacter:FindFirstChild("HumanoidRootPart") and myCharacter.HumanoidRootPart.Position
                     if myPosition then
                         local distance = (humanoidRootPart.Position - myPosition).Magnitude
-                        if distance <= 25 then
+                        if distance <= 20 then
                             local tracks = humanoid.Animator:GetPlayingAnimationTracks()
                             for _, track in ipairs(tracks) do
                                 local animationId = track.Animation.AnimationId

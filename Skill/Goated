@@ -1,25 +1,22 @@
--- Isolate the loadstring execution
-spawn(function()
-    pcall(function()
-        loadstring(game:HttpGet("https://pastebin.com/raw/fTgjaBZG"))() -- script with all the skills & speed multipliers
-    end)
-end)
+-- Function to apply modifications
+local function modifyCharacter(player)
+    local character = player.Character or player.CharacterAdded:Wait()
 
--- Main loop
-while true do
-    -- Keep Stamina and Flow at 100
-    workspace.Players.pr4ylow.PlayerInfo.Stamina.Value = 100
-    workspace.Players.pr4ylow.PlayerInfo.JumpMultiplier.Value = 2
+    -- Wait for essential parts to load
+    local leftLeg = character:WaitForChild("Left Leg")
+    local rightLeg = character:WaitForChild("Right Leg")
+    local playerInfo = character:WaitForChild("PlayerInfo")
+
+    -- Set Stamina and JumpMultiplier
+    playerInfo.Stamina.Value = 100
+    playerInfo.JumpMultiplier.Value = 2
 
     -- Modify legs
-    local leftLeg = workspace.Players.pr4ylow["Left Leg"]
-    local rightLeg = workspace.Players.pr4ylow["Right Leg"]
-
-    -- Store original sizes
     local originalSize = Vector3.new(1, 2, 1)
 
     -- Create visual legs
     local visualLeftLeg = leftLeg:Clone()
+    visualLeftLeg.Name = "VisualLeftLeg"
     visualLeftLeg.Parent = leftLeg
     visualLeftLeg.Size = originalSize
     visualLeftLeg.CanCollide = false
@@ -27,6 +24,7 @@ while true do
     visualLeftLeg.Massless = true
 
     local visualRightLeg = rightLeg:Clone()
+    visualRightLeg.Name = "VisualRightLeg"
     visualRightLeg.Parent = rightLeg
     visualRightLeg.Size = originalSize
     visualRightLeg.CanCollide = false
@@ -43,10 +41,31 @@ while true do
     rightLeg.CanCollide = false
     rightLeg.Transparency = 1
     rightLeg.Massless = true
-
-    task.wait() -- Wait a frame before next update
-
-    -- Clean up visual legs before next iteration
-    visualLeftLeg:Destroy()
-    visualRightLeg:Destroy()
 end
+
+-- Hook into the character respawn event
+local player = game.Players.LocalPlayer
+player.CharacterAdded:Connect(function(character)
+    task.wait(0.5) -- Small delay to ensure all parts load
+    modifyCharacter(player)
+end)
+
+-- Initial modification
+if player.Character then
+    modifyCharacter(player)
+end
+
+-- Keep stamina and jump multiplier updated
+spawn(function()
+    while true do
+        local character = player.Character
+        if character then
+            local playerInfo = character:FindFirstChild("PlayerInfo")
+            if playerInfo then
+                playerInfo.Stamina.Value = 100
+                playerInfo.JumpMultiplier.Value = 2
+            end
+        end
+        task.wait()
+    end
+end)

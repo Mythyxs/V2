@@ -1,0 +1,171 @@
+wait(2)
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
+-- Variables to track script state
+local running = true
+local blockingEnabled = true -- Toggle for blocking
+local processedAnimations = {}
+
+-- Function to collect animation IDs from folders, excluding "Release" animations
+local function collectAnimationIds(folders)
+    local animations = {}
+    for _, folder in ipairs(folders) do
+        for _, child in ipairs(folder:GetChildren()) do
+            if child:IsA("Animation") and not string.find(child.Name:lower(), "release") then
+                animations[child.AnimationId] = child.Name
+            end
+        end
+    end
+    return animations
+end
+
+-- Animation folders
+local animationFolders = {
+    ReplicatedStorage.Assets.Animations.Server.Shooting.CloseShots.CloseFades["1"],
+    ReplicatedStorage.Assets.Animations.Server.Shooting.CloseShots.CloseShots["1"],
+    ReplicatedStorage.Assets.Animations.Server.Shooting.CloseShots.Floaters["1"],
+    ReplicatedStorage.Assets.Animations.Server.Shooting.CloseShots.Layups["1"],
+    ReplicatedStorage.Assets.Animations.Server.Shooting.CloseShots.Layups["2"],
+    ReplicatedStorage.Assets.Animations.Server.Shooting.CloseShots.Layups["3"],
+    ReplicatedStorage.Assets.Animations.Server.Shooting.Fadeaways.Fadeaway["1"],
+    ReplicatedStorage.Assets.Animations.Server.Shooting.Fadeaways.MovingShots["1"],
+    ReplicatedStorage.Assets.Animations.Server.Shooting.Jumpshots["1"],
+    ReplicatedStorage.Assets.Animations.Server.Shooting.Jumpshots["2"],
+    ReplicatedStorage.Assets.Animations.Server.Shooting.Jumpshots["3"],
+    ReplicatedStorage.Assets.Animations.Server.Shooting.Jumpshots["4"],
+    ReplicatedStorage.Assets.Animations.Server.Shooting.Jumpshots["5"]
+}
+
+-- Collect animation IDs from folders
+local animationIdsToDetect = collectAnimationIds(animationFolders)
+
+-- Manually add dunk animations (these are not excluded by "Release" since they are explicit)
+for _, dunkAnimation in ipairs({
+    ReplicatedStorage.Assets.Animations.Server.Dunks.Windmill,
+    ReplicatedStorage.Assets.Animations.Server.Dunks.TomahawkTwoRight,
+    ReplicatedStorage.Assets.Animations.Server.Dunks["Tomahawk R"],
+    ReplicatedStorage.Assets.Animations.Server.Dunks["Tomahawk L No Hang"],
+    ReplicatedStorage.Assets.Animations.Server.Dunks["Tomahawk L"],
+    ReplicatedStorage.Assets.Animations.Server.Dunks.StandingDunk1LR,
+    ReplicatedStorage.Assets.Animations.Server.Dunks.Slingshot,
+    ReplicatedStorage.Assets.Animations.Server.Dunks.ReverseDunk,
+    ReplicatedStorage.Assets.Animations.Server.Dunks.HopstepDunk,
+    ReplicatedStorage.Assets.Animations.Server.Dunks.BackScratcher,
+    ReplicatedStorage.Assets.Animations.Server.Dunks.Dunk,
+    ReplicatedStorage.Assets.Animations.Server.Dunks.AlexDunk,
+    ReplicatedStorage.Assets.Animations.Server.Dunks["360 No Hang"],
+    ReplicatedStorage.Assets.Animations.Server.Dunks["360 Hang"],
+    ReplicatedStorage.Assets.Animations.Server.Dunks["360 Dunk"]
+}) do
+    animationIdsToDetect[dunkAnimation.AnimationId] = dunkAnimation.Name
+end
+
+-- Function to simulate a space key press
+local function simulateSpacePress()
+    if not running or not blockingEnabled then return end
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.ButtonY, false, game)
+    task.wait(0.1)
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.ButtonY, false, game)
+end
+
+-- Function to check if a player is a teammate
+local function isTeammate(model)
+    local highlight = model:FindFirstChild("Highlight")
+    if highlight and highlight.Enabled then
+        print("Detected teammate:", model.Name)
+        return true
+    end
+    return false
+end
+
+-- Function to monitor players and simulate action when conditions are met
+local function monitorPlayers()
+    while running do
+        for _, player in ipairs(Players:GetPlayers()) do
+            local character = player.Character
+            if character then
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                local humanoid = character:FindFirstChild("Humanoid")
+                if humanoidRootPart and humanoid and humanoid.Animator then
+                    -- Skip teammates
+                    if isTeammate(character) then
+                        continue
+                    end
+
+                    -- Check animations
+                    local myCharacter = Players.LocalPlayer.Character
+                    local myPosition = myCharacter and myCharacter:FindFirstChild("HumanoidRootPart") and myCharacter.HumanoidRootPart.Position
+                    if myPosition then
+                        local distance = (humanoidRootPart.Position - myPosition).Magnitude
+                        if distance <= 25 then
+                            local tracks = humanoid.Animator:GetPlayingAnimationTracks()
+                            for _, track in ipairs(tracks) do
+                                local animationId = track.Animation.AnimationId
+                                -- Check if the animation is in the detection list and hasn't been processed yet
+                                if animationIdsToDetect[animationId] and not processedAnimations[animationId] then
+                                    print("Detected animation:", animationIdsToDetect[animationId], blockingEnabled and "- Simulating space press!" or "- Blocking disabled.")
+                                    simulateSpacePress()
+                                    processedAnimations[animationId] = true
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        -- Clear processed animations if no longer playing
+        for animationId in pairs(processedAnimations) do
+            local isPlaying = false
+            for _, player in ipairs(Players:GetPlayers()) do
+                local character = player.Character
+                if character then
+                    local humanoid = character:FindFirstChild("Humanoid")
+                    if humanoid and humanoid.Animator then
+                        local tracks = humanoid.Animator:GetPlayingAnimationTracks()
+                        for _, track in ipairs(tracks) do
+                            if track.Animation.AnimationId == animationId then
+                                isPlaying = true
+                                break
+                            end
+                        end
+                    end
+                end
+                if isPlaying then
+                    break
+                end
+            end
+            if not isPlaying then
+                processedAnimations[animationId] = nil
+            end
+        end
+        task.wait(0.1) -- Check every 0.1 seconds
+    end
+end
+
+-- Function to clean up and stop the script
+local function cleanupScript()
+    print("Cleaning up script...")
+    running = false
+    processedAnimations = {}
+    animationIdsToDetect = {}
+    game:GetService("RunService").Stepped:Wait() -- Wait one frame to ensure all threads stop
+    print("Script removed successfully.")
+end
+
+-- Bind toggle and panic keys
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed then
+        if input.KeyCode == Enum.KeyCode.End then
+            cleanupScript()
+        elseif input.KeyCode == Enum.KeyCode.DPadUp then
+            blockingEnabled = not blockingEnabled
+            print("Blocking is now", blockingEnabled and "enabled" or "disabled")
+        end
+    end
+end)
+
+-- Run the player monitoring function in a separate thread
+task.spawn(monitorPlayers)

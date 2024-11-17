@@ -5,73 +5,48 @@ spawn(function()
     end)
 end)
 
--- Function to handle character modifications
-local function modifyCharacter(character)
-    -- Ensure the player's stats stay constant
-    spawn(function()
-        while character and character.Parent do
-            local playerInfo = character:FindFirstChild("PlayerInfo")
-            if playerInfo then
-                if playerInfo:FindFirstChild("Stamina") then
-                    playerInfo.Stamina.Value = 100
-                end
-                if playerInfo:FindFirstChild("JumpMultiplier") then
-                    playerInfo.JumpMultiplier.Value = 2
-                end
-            end
-            task.wait(0.1)
-        end
-    end)
+-- Main loop
+while true do
+    -- Keep Stamina and Flow at 100
+    workspace.Players.pr4ylow.PlayerInfo.Stamina.Value = 100
+    workspace.Players.pr4ylow.PlayerInfo.JumpMultiplier.Value = 2
 
     -- Modify legs
-    local function setupLeg(legName)
-        local leg = character:FindFirstChild(legName)
-        if leg then
-            -- Store original size
-            local originalSize = Vector3.new(1, 2, 1)
+    local leftLeg = workspace.Players.pr4ylow["Left Leg"]
+    local rightLeg = workspace.Players.pr4ylow["Right Leg"]
 
-            -- Create visual leg
-            local visualLeg = Instance.new("Part")
-            visualLeg.Name = "Visual" .. legName
-            visualLeg.Size = originalSize
-            visualLeg.CFrame = leg.CFrame
-            visualLeg.Parent = character
-            visualLeg.CanCollide = false
-            visualLeg.Transparency = 0
-            visualLeg.Massless = true
-            visualLeg.Anchored = false
+    -- Store original sizes
+    local originalSize = Vector3.new(1, 2, 1)
 
-            -- Weld visual leg to the original leg
-            local weld = Instance.new("WeldConstraint")
-            weld.Part0 = leg
-            weld.Part1 = visualLeg
-            weld.Parent = visualLeg
+    -- Create visual legs
+    local visualLeftLeg = leftLeg:Clone()
+    visualLeftLeg.Parent = leftLeg
+    visualLeftLeg.Size = originalSize
+    visualLeftLeg.CanCollide = false
+    visualLeftLeg.Transparency = 0
+    visualLeftLeg.Massless = true
 
-            -- Modify the hitbox leg
-            leg.Size = Vector3.new(30, 2, 30)
-            leg.CanCollide = false
-            leg.Transparency = 1
-            leg.Massless = true
-        end
-    end
+    local visualRightLeg = rightLeg:Clone()
+    visualRightLeg.Parent = rightLeg
+    visualRightLeg.Size = originalSize
+    visualRightLeg.CanCollide = false
+    visualRightLeg.Transparency = 0
+    visualRightLeg.Massless = true
 
-    -- Apply modifications to both legs
-    setupLeg("Left Leg")
-    setupLeg("Right Leg")
-end
+    -- Set hitbox legs size and properties
+    leftLeg.Size = Vector3.new(30, 2, 30)
+    leftLeg.CanCollide = false
+    leftLeg.Transparency = 1
+    leftLeg.Massless = true
 
--- Monitor character spawning
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
+    rightLeg.Size = Vector3.new(30, 2, 30)
+    rightLeg.CanCollide = false
+    rightLeg.Transparency = 1
+    rightLeg.Massless = true
 
-player.CharacterAdded:Connect(function(character)
-    -- Wait for the character to fully load
-    character:WaitForChild("Humanoid")
-    character:WaitForChild("PlayerInfo")
-    modifyCharacter(character)
-end)
+    task.wait() -- Wait a frame before next update
 
--- If the character is already loaded, modify it
-if player.Character then
-    modifyCharacter(player.Character)
+    -- Clean up visual legs before next iteration
+    visualLeftLeg:Destroy()
+    visualRightLeg:Destroy()
 end

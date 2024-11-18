@@ -115,7 +115,7 @@ local function monitorPlayers()
                     local myPosition = myCharacter and myCharacter:FindFirstChild("HumanoidRootPart") and myCharacter.HumanoidRootPart.Position
                     if myPosition then
                         local distance = (humanoidRootPart.Position - myPosition).Magnitude
-                        if distance <= 20 and isInPaintZone(humanoidRootPart.Position) then
+                        if distance <= 15 and isInPaintZone(humanoidRootPart.Position) then
                             local tracks = humanoid.Animator:GetPlayingAnimationTracks()
                             for _, track in ipairs(tracks) do
                                 local animationId = track.Animation.AnimationId

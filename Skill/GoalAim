@@ -2,42 +2,29 @@ if game.PlaceId ~= 17043277158 then
     return
 end
 
-local RedGoal1 = Instance.new("Part")
-RedGoal1.CFrame = CFrame.new(-17520.4824, 807.393555, 221.899963, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1)
---Forward/Back/Y/X
-RedGoal1.Size = Vector3.new(2, 2, 1.5)
-RedGoal1.Shape = Enum.PartType.Ball
-RedGoal1.Anchored = true
-RedGoal1.Parent = nil -- Start with no parent
-RedGoal1.Color = Color3.fromRGB(255, 0, 0)
-RedGoal1.Transparency = 1
+-- Create template part
+local function createGoalPart(position)
+    local part = Instance.new("Part")
+    part.CFrame = position
+    part.Size = Vector3.new(2, 2, 1.5)
+    part.Shape = Enum.PartType.Ball
+    part.Anchored = true
+    part.Parent = nil
+    part.Transparency = 0
+    return part
+end
 
-local RedGoal2 = Instance.new("Part")
-RedGoal2.CFrame = CFrame.new(-17520.4824, 807.393555, 260.7, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1)
-RedGoal2.Size = Vector3.new(2, 2, 1.5)
-RedGoal2.Shape = Enum.PartType.Ball
-RedGoal2.Anchored = true
-RedGoal2.Parent = nil -- Start with no parent
-RedGoal2.Color = Color3.fromRGB(255, 0, 0)
-RedGoal2.Transparency = 1
+-- Create all goals with their positions
+local redleft = createGoalPart(CFrame.new(-17520.4824, 807.393555, 221.899963, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1))
+local redright = createGoalPart(CFrame.new(-17520.4824, 807.393555, 260.7, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1))
+local blueleft = createGoalPart(CFrame.new(-18520.4824, 807.393555, 221.899963, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1))
+local blueright = createGoalPart(CFrame.new(-18520.4824, 807.393555, 260.7, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1))
 
-local BlueGoal1 = Instance.new("Part")
-BlueGoal1.CFrame = CFrame.new(-18520.4824, 807.393555, 221.899963, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1)
-BlueGoal1.Size = Vector3.new(2, 2, 1.5)
-BlueGoal1.Shape = Enum.PartType.Ball
-BlueGoal1.Anchored = true
-BlueGoal1.Parent = nil -- Start with no parent
-BlueGoal1.Color = Color3.fromRGB(0, 0, 255)
-BlueGoal1.Transparency = 1
-
-local BlueGoal2 = Instance.new("Part")
-BlueGoal2.CFrame = CFrame.new(-18520.4824, 807.393555, 260.7, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1)
-BlueGoal2.Size = Vector3.new(2, 2, 1.5)
-BlueGoal2.Shape = Enum.PartType.Ball
-BlueGoal2.Anchored = true
-BlueGoal2.Parent = nil -- Start with no parent
-BlueGoal2.Color = Color3.fromRGB(0, 0, 255)
-BlueGoal2.Transparency = 1
+-- Set team colors
+redleft.Color = Color3.fromRGB(255, 0, 0)
+redright.Color = Color3.fromRGB(255, 0, 0)
+blueleft.Color = Color3.fromRGB(0, 0, 255)
+blueright.Color = Color3.fromRGB(0, 0, 255)
 
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -57,16 +44,16 @@ local function updateGoalVisibility()
     if LocalPlayer.Team then
         if LocalPlayer.Team.Name == "Red" then
             -- If on Red team, show Blue goals and hide Red goals
-            RedGoal1.Parent = nil
-            RedGoal2.Parent = nil
-            BlueGoal1.Parent = workspace
-            BlueGoal2.Parent = workspace
+            redleft.Parent = nil
+            redright.Parent = nil
+            blueleft.Parent = workspace
+            blueright.Parent = workspace
         elseif LocalPlayer.Team.Name == "Blue" then
             -- If on Blue team, show Red goals and hide Blue goals
-            BlueGoal1.Parent = nil
-            BlueGoal2.Parent = nil
-            RedGoal1.Parent = workspace
-            RedGoal2.Parent = workspace
+            blueleft.Parent = nil
+            blueright.Parent = nil
+            redleft.Parent = workspace
+            redright.Parent = workspace
         end
     end
 end
@@ -78,10 +65,10 @@ local function getClosestPart()
     
     -- Only check parts that are currently parented to workspace
     local targets = {}
-    if RedGoal1.Parent then table.insert(targets, RedGoal1) end
-    if RedGoal2.Parent then table.insert(targets, RedGoal2) end
-    if BlueGoal1.Parent then table.insert(targets, BlueGoal1) end
-    if BlueGoal2.Parent then table.insert(targets, BlueGoal2) end
+    if redleft.Parent then table.insert(targets, redleft) end
+    if redright.Parent then table.insert(targets, redright) end
+    if blueleft.Parent then table.insert(targets, blueleft) end
+    if blueright.Parent then table.insert(targets, blueright) end
     
     for _, target in pairs(targets) do
         if target and target.Parent then
@@ -103,10 +90,10 @@ local function cleanupScript()
     isScriptActive = false
     
     -- Remove all goals from workspace first
-    RedGoal1.Parent = nil
-    RedGoal2.Parent = nil
-    BlueGoal1.Parent = nil
-    BlueGoal2.Parent = nil
+    redleft.Parent = nil
+    redright.Parent = nil
+    blueleft.Parent = nil
+    blueright.Parent = nil
     
     -- Disconnect all connections
     if connection then
@@ -120,10 +107,10 @@ local function cleanupScript()
     end
     
     -- Destroy the parts
-    if RedGoal1 then RedGoal1:Destroy() end
-    if RedGoal2 then RedGoal2:Destroy() end
-    if BlueGoal1 then BlueGoal1:Destroy() end
-    if BlueGoal2 then BlueGoal2:Destroy() end
+    if redleft then redleft:Destroy() end
+    if redright then redright:Destroy() end
+    if blueleft then blueleft:Destroy() end
+    if blueright then blueright:Destroy() end
 end
 
 connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)

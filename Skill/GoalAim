@@ -1,0 +1,165 @@
+if game.PlaceId ~= 17043277158 then
+    return
+end
+
+local RedGoal1 = Instance.new("Part")
+RedGoal1.CFrame = CFrame.new(-17520.4824, 807.393555, 221.899963, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1)
+--Forward/Back/Y/X
+RedGoal1.Size = Vector3.new(2, 2, 1.5)
+RedGoal1.Shape = Enum.PartType.Ball
+RedGoal1.Anchored = true
+RedGoal1.Parent = nil -- Start with no parent
+RedGoal1.Color = Color3.fromRGB(255, 0, 0)
+RedGoal1.Transparency = 1
+
+local RedGoal2 = Instance.new("Part")
+RedGoal2.CFrame = CFrame.new(-17520.4824, 807.393555, 260.7, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1)
+RedGoal2.Size = Vector3.new(2, 2, 1.5)
+RedGoal2.Shape = Enum.PartType.Ball
+RedGoal2.Anchored = true
+RedGoal2.Parent = nil -- Start with no parent
+RedGoal2.Color = Color3.fromRGB(255, 0, 0)
+RedGoal2.Transparency = 1
+
+local BlueGoal1 = Instance.new("Part")
+BlueGoal1.CFrame = CFrame.new(-18520.4824, 807.393555, 221.899963, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1)
+BlueGoal1.Size = Vector3.new(2, 2, 1.5)
+BlueGoal1.Shape = Enum.PartType.Ball
+BlueGoal1.Anchored = true
+BlueGoal1.Parent = nil -- Start with no parent
+BlueGoal1.Color = Color3.fromRGB(0, 0, 255)
+BlueGoal1.Transparency = 1
+
+local BlueGoal2 = Instance.new("Part")
+BlueGoal2.CFrame = CFrame.new(-18520.4824, 807.393555, 260.7, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1)
+BlueGoal2.Size = Vector3.new(2, 2, 1.5)
+BlueGoal2.Shape = Enum.PartType.Ball
+BlueGoal2.Anchored = true
+BlueGoal2.Parent = nil -- Start with no parent
+BlueGoal2.Color = Color3.fromRGB(0, 0, 255)
+BlueGoal2.Transparency = 1
+
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+local connection
+local aimConnection
+local teamCheckConnection
+local isScriptActive = true
+
+local function updateGoalVisibility()
+    if not isScriptActive then return end
+    
+    if LocalPlayer.Team then
+        if LocalPlayer.Team.Name == "Red" then
+            -- If on Red team, show Blue goals and hide Red goals
+            RedGoal1.Parent = nil
+            RedGoal2.Parent = nil
+            BlueGoal1.Parent = workspace
+            BlueGoal2.Parent = workspace
+        elseif LocalPlayer.Team.Name == "Blue" then
+            -- If on Blue team, show Red goals and hide Blue goals
+            BlueGoal1.Parent = nil
+            BlueGoal2.Parent = nil
+            RedGoal1.Parent = workspace
+            RedGoal2.Parent = workspace
+        end
+    end
+end
+
+local function getClosestPart()
+    local mousePos = Vector2.new(Mouse.X, Mouse.Y)
+    local closestPart = nil
+    local closestDistance = math.huge
+    
+    -- Only check parts that are currently parented to workspace
+    local targets = {}
+    if RedGoal1.Parent then table.insert(targets, RedGoal1) end
+    if RedGoal2.Parent then table.insert(targets, RedGoal2) end
+    if BlueGoal1.Parent then table.insert(targets, BlueGoal1) end
+    if BlueGoal2.Parent then table.insert(targets, BlueGoal2) end
+    
+    for _, target in pairs(targets) do
+        if target and target.Parent then
+            local vector, onScreen = Camera:WorldToScreenPoint(target.Position)
+            if onScreen then
+                local distance = (mousePos - Vector2.new(vector.X, vector.Y)).Magnitude
+                if distance < closestDistance then
+                    closestDistance = distance
+                    closestPart = target
+                end
+            end
+        end
+    end
+    
+    return closestPart
+end
+
+local function cleanupScript()
+    isScriptActive = false
+    
+    -- Remove all goals from workspace first
+    RedGoal1.Parent = nil
+    RedGoal2.Parent = nil
+    BlueGoal1.Parent = nil
+    BlueGoal2.Parent = nil
+    
+    -- Disconnect all connections
+    if connection then
+        connection:Disconnect()
+    end
+    if aimConnection then
+        aimConnection:Disconnect()
+    end
+    if teamCheckConnection then
+        teamCheckConnection:Disconnect()
+    end
+    
+    -- Destroy the parts
+    if RedGoal1 then RedGoal1:Destroy() end
+    if RedGoal2 then RedGoal2:Destroy() end
+    if BlueGoal1 then BlueGoal1:Destroy() end
+    if BlueGoal2 then BlueGoal2:Destroy() end
+end
+
+connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.End then
+        cleanupScript()
+    end
+end)
+
+local isAiming = false
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.UserInputType == Enum.UserInputType.MouseButton3 then
+        isAiming = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if input.UserInputType == Enum.UserInputType.MouseButton3 then
+        isAiming = false
+    end
+end)
+
+aimConnection = RunService.RenderStepped:Connect(function()
+    if isAiming and isScriptActive then
+        local target = getClosestPart()
+        if target then
+            local targetPos = target.Position
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
+        end
+    end
+end)
+
+-- Check team every second and update goal visibility
+teamCheckConnection = RunService.Heartbeat:Connect(function()
+    wait(1)
+    updateGoalVisibility()
+end)
+
+-- Initial check
+updateGoalVisibility()

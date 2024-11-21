@@ -1,0 +1,54 @@
+-- Isolate the loadstring execution
+spawn(function()
+    pcall(function()
+        loadstring(game:HttpGet("https://pastebin.com/raw/fTgjaBZG"))() -- script with all the skills & speed multipliers
+    end)
+end)
+
+-- Main loop
+while true do
+    -- Keep Stamina and Flow at 100
+    local localPlayer = game.Players.LocalPlayer
+    local playerInfo = workspace.Players[localPlayer.Name].PlayerInfo
+    playerInfo.Stamina.Value = 100
+    playerInfo.JumpMultiplier.Value = 2
+
+    -- Modify legs
+    local leftLeg = workspace.Players[localPlayer.Name]["Left Leg"]
+    local rightLeg = workspace.Players[localPlayer.Name]["Right Leg"]
+
+    -- Store original sizes
+    local originalSize = Vector3.new(1, 2, 1)
+
+    -- Create visual legs
+    local visualLeftLeg = leftLeg:Clone()
+    visualLeftLeg.Parent = leftLeg
+    visualLeftLeg.Size = originalSize
+    visualLeftLeg.CanCollide = false
+    visualLeftLeg.Transparency = 0
+    visualLeftLeg.Massless = true
+
+    local visualRightLeg = rightLeg:Clone()
+    visualRightLeg.Parent = rightLeg
+    visualRightLeg.Size = originalSize
+    visualRightLeg.CanCollide = false
+    visualRightLeg.Transparency = 0
+    visualRightLeg.Massless = true
+
+    -- Set hitbox legs size and properties
+    leftLeg.Size = Vector3.new(20, 2, 20)
+    leftLeg.CanCollide = false
+    leftLeg.Transparency = 1
+    leftLeg.Massless = true
+
+    rightLeg.Size = Vector3.new(20, 2, 20)
+    rightLeg.CanCollide = false
+    rightLeg.Transparency = 1
+    rightLeg.Massless = true
+
+    task.wait() -- Wait a frame before next update
+
+    -- Clean up visual legs before next iteration
+    visualLeftLeg:Destroy()
+    visualRightLeg:Destroy()
+end

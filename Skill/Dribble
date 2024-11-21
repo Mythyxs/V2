@@ -1,0 +1,142 @@
+-- Variables
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local Teams = game:GetService("Teams")
+
+local LocalPlayer = Players.LocalPlayer
+local localCharacter = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local localInstanceFolder = workspace.Players:FindFirstChild(LocalPlayer.Name).InstanceValue
+
+-- Distances
+local kickDistance = 15
+local slideDistance = 15
+local skillDistance = 15
+
+-- Function to check distance
+local function isWithinDistance(part1, part2, distance)
+    if part1 and part2 then
+        return (part1.Position - part2.Position).Magnitude <= distance
+    end
+    return false
+end
+
+-- Function to check if a player is facing the LocalPlayer
+local function isFacing(localRootPart, playerRootPart)
+    if localRootPart and playerRootPart then
+        local playerLookVector = playerRootPart.CFrame.LookVector
+        local directionToLocalPlayer = (localRootPart.Position - playerRootPart.Position).Unit
+        local dotProduct = playerLookVector:Dot(directionToLocalPlayer)
+        return dotProduct > 0.8 -- Adjust threshold as necessary for precision
+    end
+    return false
+end
+
+-- Variables for script control
+local isScriptRunning = true
+local mainLoop = nil
+local inputConnection = nil
+
+-- Function to clean up script
+local function terminateScript()
+    isScriptRunning = false -- Stop the main loop
+    
+    if mainLoop then -- Disconnect the main loop if it exists
+        task.cancel(mainLoop)
+    end
+    
+    if inputConnection then -- Disconnect input handler
+        inputConnection:Disconnect()
+    end
+    
+    script:Destroy() -- Remove the script instance
+end
+
+-- Panic key to terminate the script
+inputConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.Delete then
+        terminateScript()
+    end
+end)
+
+-- Dribble Function
+local function dribble()
+    local charInstance = LocalPlayer.Character.InstanceValue
+    if charInstance:FindFirstChild("LiftCooldown") 
+        and not charInstance:FindFirstChild("DribbleCooldown") 
+        and not charInstance:FindFirstChild("FeintCooldown") 
+        and not charInstance:FindFirstChild("Skill") 
+        and not charInstance:FindFirstChild("ChargingKick") 
+        and not charInstance:FindFirstChild("KickCooldown") then
+
+        -- Fire Hold Kick event
+        local args = {
+            [1] = {
+                [1] = "Hold Kick"
+            }
+        }
+        ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shooting"):FireServer(unpack(args))
+    end
+
+    -- Fire Dribble event
+    local dribbleArgs = {
+        [1] = CFrame.new(-17624.666015625, 793.785888671875, 250.88763427734375, 
+            -0.8422284126281738, 1.3006799193249208e-08, -0.5391208529472351, 
+            -8.255909844656628e-11, 1, 2.4254919850363876e-08, 
+            0.5391208529472351, 2.0472691986128666e-08, -0.8422284126281738)
+    }
+    ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Dribble"):FireServer(unpack(dribbleArgs))
+end
+
+-- Main Loop
+mainLoop = task.spawn(function()
+    while isScriptRunning and task.wait() do
+        -- Check if LocalPlayer has possession of the ball
+        if localInstanceFolder:FindFirstChild("Possession") and localInstanceFolder.Possession.Value then
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and workspace.Players:FindFirstChild(player.Name) then
+                    local playerCharacter = workspace.Players[player.Name]
+                    local playerInstanceFolder = playerCharacter.InstanceValue
+                    local playerRootPart = playerCharacter:FindFirstChild("HumanoidRootPart")
+                    local localRootPart = localCharacter:FindFirstChild("HumanoidRootPart")
+
+                    -- Check for Kick
+                    if playerInstanceFolder and playerInstanceFolder:FindFirstChild("Kick") then
+                        if isWithinDistance(localRootPart, playerRootPart, kickDistance) and isFacing(localRootPart, playerRootPart) then
+                            -- Team check
+                            local localTeam = LocalPlayer.Team
+                            if player.Team ~= localTeam then
+                                dribble()
+                            end
+                        end
+                    end
+
+                    -- Check for SlideTackle
+                    if playerInstanceFolder and playerInstanceFolder:FindFirstChild("SlideTackle") then
+                        if isWithinDistance(localRootPart, playerRootPart, slideDistance) and isFacing(localRootPart, playerRootPart) then
+                            -- Team check
+                            local localTeam = LocalPlayer.Team
+                            if player.Team ~= localTeam then
+                                dribble()
+                            end
+                        end
+                    end
+
+                    -- Check for Skill
+                    if playerInstanceFolder and playerInstanceFolder:FindFirstChild("Skill") then
+                        local skillValue = playerInstanceFolder.Skill.Value
+                        if skillValue ~= "Explosive Speed" and skillValue ~= "Explosive Acceleration" and skillValue ~= "Flurry Dash" and skillValue ~= "Hunters Net" and skillValue ~= "Replenish" then
+                            if isWithinDistance(localRootPart, playerRootPart, skillDistance) and isFacing(localRootPart, playerRootPart) then
+                                -- Team check
+                                local localTeam = LocalPlayer.Team
+                                if player.Team ~= localTeam then
+                                    dribble()
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)

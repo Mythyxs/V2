@@ -37,12 +37,49 @@ if messiFolder then
     end)
 end
 
--- Main loop to periodically update existing balls
+-- Function to check if LocalPlayer has possession
+local function hasPossession()
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local localCharacter = workspace.Players:FindFirstChild(LocalPlayer.Name)
+    
+    if localCharacter and localCharacter:FindFirstChild("InstanceValue") then
+        local localInstanceFolder = localCharacter.InstanceValue
+        if localInstanceFolder:FindFirstChild("Possession") and localInstanceFolder.Possession.Value then
+            return true
+        end
+    end
+    return false
+end
+
+-- Function to handle stamina updates based on possession
+local function updateStamina()
+    local localPlayer = game.Players.LocalPlayer
+    local playerInfo = workspace.Players[localPlayer.Name].PlayerInfo
+
+    -- Ensure stamina does not go below 3
+    if playerInfo.Stamina.Value < 5 then
+        playerInfo.Stamina.Value = 7
+    end
+
+    -- Update stamina based on possession
+    if not hasPossession() then
+        -- Set stamina to 100 when not in possession
+        playerInfo.Stamina.Value = 100
+    end
+end
+
+-- Main loop to periodically update stamina and existing balls
 while true do
+    -- Update stamina based on possession
+    updateStamina()
+
+    -- Update all existing balls in Messi folder
     if messiFolder then
         for _, model in pairs(messiFolder:GetChildren()) do
             processBall(model)
         end
     end
-    task.wait(0.1) -- Slight delay to reduce resource usage
+
+    task.wait() -- Slight delay to reduce resource usage
 end

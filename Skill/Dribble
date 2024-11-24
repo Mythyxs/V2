@@ -6,7 +6,7 @@ wait(2)
 local based = 0
 local runLoop
 runLoop = game:GetService("RunService").RenderStepped:Connect(function(deltaTime)
-    
+    game:GetService("Players").LocalPlayer.Character.PlayerInfo.JumpMultiplier.Value = 4
     --if game:GetService("Players").LocalPlayer.Character.PlayerInfo.Stamina.Value < 2 then
        --game:GetService("Players").LocalPlayer.Character.PlayerInfo.Stamina.Value = 2
     end

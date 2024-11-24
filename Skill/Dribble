@@ -1,152 +1,370 @@
--- Variables
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
-local Teams = game:GetService("Teams")
+local VirtualInputManager = Instance.new('VirtualInputManager')
 
-local LocalPlayer = Players.LocalPlayer
-local localCharacter = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local localInstanceFolder = workspace.Players:FindFirstChild(LocalPlayer.Name).InstanceValue
 
--- Distances
-local kickDistance = 12
-local slideDistance = 15
-local skillDistance = 20
-
--- Function to check distance
-local function isWithinDistance(part1, part2, distance)
-    if part1 and part2 then
-        return (part1.Position - part2.Position).Magnitude <= distance
+wait(2)
+warn("skibidi detected")
+------------------------------------------------------------------------------------------------------------------------------------
+local based = 0
+local runLoop
+runLoop = game:GetService("RunService").RenderStepped:Connect(function(deltaTime)
+    game:GetService("Players").LocalPlayer.Character.PlayerInfo.JumpMultiplier.Value = 4
+    if game:GetService("Players").LocalPlayer.Character.PlayerInfo.Stamina.Value < 2 then
+        game:GetService("Players").LocalPlayer.Character.PlayerInfo.Stamina.Value = 2
     end
-    return false
+    game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Size = Vector3.new(10,2,10)
+    if game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("SlideTackle") or game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Skill") or game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Possession") then
+        game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Size = Vector3.new(2,2,1)
+    end
+------------------------------------------------------------------------------------------------------------------------------------
+
+
+local activate = false
+
+-- This function checks if any of the animations currently playing on the humanoid match any of the given animation IDs.
+-- It returns true if there is a match, otherwise it returns false.
+local function checkAnimations(animationIds, humanoid)
+	local playingTracks = humanoid:GetPlayingAnimationTracks()
+
+	-- Use a set to store unique animation IDs
+	local animationIdSet = {}
+	for _, animationId in ipairs(animationIds) do
+		animationIdSet[animationId] = true
+	end
+
+	for _, track in ipairs(playingTracks) do
+		local currentAnimation = track.Animation
+		if animationIdSet[currentAnimation.AnimationId] then
+			return true
+		end
+	end
+
+	return false
 end
 
--- Function to check if a player is facing the LocalPlayer
-local function isFacing(localRootPart, playerRootPart)
-    if localRootPart and playerRootPart then
-        local playerLookVector = playerRootPart.CFrame.LookVector
-        local directionToLocalPlayer = (localRootPart.Position - playerRootPart.Position).Unit
-        local dotProduct = playerLookVector:Dot(directionToLocalPlayer)
-        return dotProduct > 0.7 -- Adjust threshold as necessary for precision
-    end
-    return false
+-- This function, Target, identifies the nearest opponent player who has possession of the ball,
+-- is not dribbling, and is not using a skill. It returns the closest valid opponent player as the target.
+function Target()
+	local target = nil
+	local distance = math.huge
+
+	for i,v in next, game.Players:GetChildren() do
+		if v and v.Character and v~=game.Players.LocalPlayer and v.Team~=game.Players.LocalPlayer.Team and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("HumanoidRootPart") and v.Character:FindFirstChildOfClass("Humanoid") and v.Character:FindFirstChildOfClass("Humanoid").Health>0 then
+            if v.Character.InstanceValue:FindFirstChild("Possession") and not v.Character.InstanceValue:FindFirstChild("Dribble") and not v.Character.InstanceValue:FindFirstChild("Skill") then
+                local plrdist = game.Players.LocalPlayer:DistanceFromCharacter(v.Character:FindFirstChildOfClass('Humanoid').RootPart.CFrame.p)
+                if plrdist < distance then
+                    target = v
+                    distance = plrdist
+                end
+            end
+        end
+	end
+
+	return target
 end
 
--- Variables for script control
-local isScriptRunning = true
-local mainLoop = nil
-local inputConnection = nil
-
--- Function to clean up script
-local function terminateScript()
-    isScriptRunning = false -- Stop the main loop
-    
-    if mainLoop then -- Disconnect the main loop if it exists
-        task.cancel(mainLoop)
-    end
-    
-    if inputConnection then -- Disconnect input handler
-        inputConnection:Disconnect()
-    end
-    
-    script:Destroy() -- Remove the script instance
+-- This function finds the nearest football in the workspace and returns it as the target.
+function ball()
+	local target = nil
+	local distance = math.huge
+    pcall(function()
+        for i,b in next, workspace.Messi:GetChildren() do
+            local plrdist = game.Players.LocalPlayer:DistanceFromCharacter(b:FindFirstChild("Football").CFrame.p)
+            if plrdist < distance then
+                target = b:FindFirstChild("Football")
+                distance = plrdist
+            end
+        end
+    end)    
+	return target
 end
 
--- Panic key to terminate the script
-inputConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.Delete then
-        terminateScript()
-    end
-end)
 
--- Dribble Function
-local function dribble()
-    local charInstance = LocalPlayer.Character.InstanceValue
-    if charInstance:FindFirstChild("LiftCooldown") 
-        and not charInstance:FindFirstChild("DribbleCooldown") 
-        and not charInstance:FindFirstChild("FeintCooldown") 
-        and not charInstance:FindFirstChild("Skill") 
-        and not charInstance:FindFirstChild("ChargingKick") 
-        and not charInstance:FindFirstChild("KickCooldown") then
-
-        -- Fire Hold Kick event
-        local args = {
-            [1] = {
-                [1] = "Hold Kick"
-            }
-        }
-        ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shooting"):FireServer(unpack(args))
-    end
-
-    -- Fire Dribble event
-    local dribbleArgs = {
-        [1] = CFrame.new(-17624.666015625, 793.785888671875, 250.88763427734375, 
-            -0.8422284126281738, 1.3006799193249208e-08, -0.5391208529472351, 
-            -8.255909844656628e-11, 1, 2.4254919850363876e-08, 
-            0.5391208529472351, 2.0472691986128666e-08, -0.8422284126281738)
-    }
-    ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Dribble"):FireServer(unpack(dribbleArgs))
-end
-
--- Main Loop
-mainLoop = task.spawn(function()
-    while isScriptRunning and task.wait() do
-        -- Check if LocalPlayer has possession of the ball
-        if localInstanceFolder:FindFirstChild("Possession") and localInstanceFolder.Possession.Value then
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and workspace.Players:FindFirstChild(player.Name) then
-                    local playerCharacter = workspace.Players[player.Name]
-                    local playerInstanceFolder = playerCharacter.InstanceValue
-                    local playerRootPart = playerCharacter:FindFirstChild("HumanoidRootPart")
-                    local localRootPart = localCharacter:FindFirstChild("HumanoidRootPart")
-
-                    -- Check for Kick
-                    if playerInstanceFolder and playerInstanceFolder:FindFirstChild("ChargingKick") then
-                        if isWithinDistance(localRootPart, playerRootPart, kickDistance) and isFacing(localRootPart, playerRootPart) then
-                            -- Team check
-                            local localTeam = LocalPlayer.Team
-                            if player.Team ~= localTeam then
-                                dribble()
-                            end
-                        end
-                    end
-
-                    -- Check for SlideTackle
-                    if playerInstanceFolder and playerInstanceFolder:FindFirstChild("SlideTackle") then
-                        if isWithinDistance(localRootPart, playerRootPart, slideDistance) and isFacing(localRootPart, playerRootPart) then
-                            -- Team check
-                            local localTeam = LocalPlayer.Team
-                            if player.Team ~= localTeam then
-                                dribble()
-                            end
-                        end
-                    end
-
-                    -- Check for Skill
-                    if playerInstanceFolder and playerInstanceFolder:FindFirstChild("Skill") then
-                        local skillValue = playerInstanceFolder.Skill.Value
-
-                        -- Dynamically adjust skillDistance for specific skills
-                        local currentSkillDistance = skillDistance
-                        if skillValue == "Ignited Steel" or skillValue == "Speed Burst" then
-                            currentSkillDistance = 100
-                        end
-
-                        if skillValue ~= "Explosive Speed" and skillValue ~= "Explosive Acceleration" 
-                            and skillValue ~= "Flurry Dash" and skillValue ~= "Hunters Net" 
-                            and skillValue ~= "Replenish" then
-                            
-                            if isWithinDistance(localRootPart, playerRootPart, currentSkillDistance) and isFacing(localRootPart, playerRootPart) then
-                                -- Team check
-                                local localTeam = LocalPlayer.Team
-                                if player.Team ~= localTeam then
-                                    dribble()
-                                end
-                            end
-                        end
+-- The Defender function identifies the nearest opponent player who does not have possession of the ball
+-- when the local player has possession. It returns the closest opponent player as the target.
+function Defender()
+	local target = nil
+	local distance = math.huge
+    if game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Possession") then
+        for i,v in next, game.Players:GetChildren() do
+            if v and v.Character and v~=game.Players.LocalPlayer and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("HumanoidRootPart") and v.Character:FindFirstChildOfClass("Humanoid") and v.Character:FindFirstChildOfClass("Humanoid").Health>0 then
+                if not v.Character.InstanceValue:FindFirstChild("Possession") then
+                    local plrdist = game.Players.LocalPlayer:DistanceFromCharacter(v.Character:FindFirstChildOfClass('Humanoid').RootPart.CFrame.p)
+                    if plrdist < distance then
+                        target = v
+                        distance = plrdist
                     end
                 end
             end
         end
     end
+
+	return target
+end
+
+local function XZ(V)
+	return Vector3.new(V.X, 0, V.Z)
+end
+
+
+--[[ -- The MoveTo function commands the local player's humanoid to move to a specified position.
+local function MoveTo(POS)
+    local humanoid = game.Players.LocalPlayer.Character.Humanoid
+    humanoid:MoveTo(POS)
+end
+]]
+
+-- This function simulates the character touching the ball by firing touch events.
+-- It iterates through all the parts of the character and if a part has a TouchInterest,
+-- it fires a touch event on the ball with that part.
+--[[
+function ballmag(character, ball)
+   -- pcall(function()
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") and part.TouchInterest then
+                firetouchinterest(ball,part,0)
+                task.wait()
+                firetouchinterest(ball,part,1)
+            end
+        end
+  --  end)
+end
+]]
+-- This function checks if a character is looking at a player by calculating the dot product-
+-- between the character's forward direction and the direction to the player. It returns two values:
+-- the dot product indicating the alignment of the character's forward direction with the player,
+-- and the dot product of the character's velocity with the direction to the player.
+local function isCharacterLookingAtPlayer(character, player)
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return false end
+
+    local playerPosition = player.Character and player.Character:FindFirstChild("HumanoidRootPart").Position
+    if not playerPosition then return false end
+
+    local characterPosition = humanoidRootPart.Position
+    local characterForward = humanoidRootPart.CFrame.LookVector
+    local characterVelocity = humanoidRootPart.Velocity
+
+    -- Calculate the direction from the character to the player
+    local directionToPlayer = (playerPosition - characterPosition).unit
+
+    -- Calculate the dot product
+    local dotProduct = characterForward:Dot(directionToPlayer)
+    local velocitydot = characterVelocity:Dot(directionToPlayer)
+
+    -- Check if the dot product indicates the character is looking in the player's direction
+    return dotProduct, velocitydot
+end
+
+-- Animation IDs for various skills and actions (aren't currently used)
+-------------------------------------------
+-------------------------------------------
+local steptackle={
+    "rbxassetid://13655839029",
+    "rbxassetid://18583860381",
+    "rbxassetid://125071502016389",
+    "rbxassetid://13655839029",
+}
+
+local slidetackle={
+    "rbxassetid://18534564434",
+    "rbxassetid://16102450997",
+}
+
+local holdkick={
+    "rbxassetid://18534246749",
+    "rbxassetid://17109676406",
+    "rbxassetid://16111897168"
+}
+
+local iceground={
+    "rbxassetid://18220817654",
+}
+
+local ignitedsteal={
+    "rbxassetid://88839956246094",
+}
+
+local killerslide={
+    "rbxassetid://17122464963",
+}
+
+local spiraldraw={
+    "rbxassetid://17069423384",
+}
+-------------------------------------------
+-------------------------------------------
+-- This function initiates a dribble action for the local player if certain cooldowns are not active.
+function dribble()
+    if game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("LiftCooldown") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("DribbleCooldown") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("FeintCooldown") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Skill") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("ChargingKick") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("FeintCooldown") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Skill") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("FeintCooldown") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("KickCooldown") then
+        local args = {
+            [1] = {
+                [1] = "Hold Kick"
+            }
+        }
+        
+        game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Shooting"):FireServer(unpack(args))
+    end
+    local args = {
+        [1] = CFrame.new(-17624.666015625, 793.785888671875, 250.88763427734375, -0.8422284126281738, 1.3006799193249208e-08, -0.5391208529472351, -8.255909844656628e-11, 1, 2.4254919850363876e-08, 0.5391208529472351, 2.0472691986128666e-08, -0.8422284126281738)
+    }
+    game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Dribble"):FireServer(unpack(args))
+end
+
+-- This function checks if the given Defender has a specific skill active and returns true if it matches any of the predefined skill values.
+function check(Defender)
+    local anyTrue = false
+
+    if Defender.Character.InstanceValue:FindFirstChild("Skill") then
+        local Skill = Defender.Character.InstanceValue:FindFirstChild("Skill").Value
+        
+        -- Check if Skill matches any of the specified values
+        if Skill == "Speed Burst" or 
+           Skill == "Explosive Speed" or 
+           Skill == "Explosive Acceleration" or 
+           Skill == "Flurry Dash" or 
+           Skill == "Hunters Net" or 
+           Skill == "Replenish" or 
+           Skill == "Blackhole Trap" or 
+           Skill == "Ice Ground" or 
+           Skill == "Ignited Steal" or 
+           Skill == "Spiral Draw" then
+            anyTrue = true
+        end
+
+    end
+
+    return anyTrue
+end
+--local cameraPos
+
+    --[[
+    if ball() then
+        if hold then
+            game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.lookAt(game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Position, Vector3.new(ball().Position.X,
+            game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Position.Y, ball().Position.Z))
+            MoveTo(ball().Position)
+            delay(0.01, function()
+                local args = {
+                    [1] = CFrame.new(-20729.94140625, 28.714073181152344, -30492.41015625, -0.1295986771583557, -1.850874831177407e-08, -0.99156653881073, -4.7537639602523996e-08, 1, -1.2452955999719961e-08, 0.99156653881073, 4.552284593728473e-08, -0.1295986771583557)
+                }         
+                game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("SlideTackle"):FireServer(unpack(args))
+             end)
+        end
+    end
+    ]]--
+    --[[
+    if Defender() then
+        print(isCharacterLookingAtPlayer(Defender().Character, game:GetService("Players").LocalPlayer))
+    end
+    ]]--
+
+    pcall(function()
+        if game.PlaceId == 130976392556634 then
+            local args = {
+                [1] = {
+                    [1] = "Red",
+                    [2] = "FW"
+                }
+            }
+            
+            game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("MatchInfo"):FireServer(unpack(args))
+        end
+    end)
+
+    if activate == true then
+        if ball() then
+            if (not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("SlideTackleCooldown")) then
+                if not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("SlideTackle") then
+                end
+                delay(0.15, function()
+                if not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("SlideTackleCooldown") then
+                        local args = {
+                            [1] = CFrame.new(-20729.94140625, 28.714073181152344, -30492.41015625, -0.1295986771583557, -1.850874831177407e-08, -0.99156653881073, -4.7537639602523996e-08, 1, -1.2452955999719961e-08, 0.99156653881073, 4.552284593728473e-08, -0.1295986771583557)
+                        }         
+                        game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("SlideTackle"):FireServer(unpack(args))
+                        activate = false
+                    end
+                    activate = false
+                end)
+            else
+                activate = false
+            end
+        else
+            activate = false
+        end
+    end
+    if ball() then
+        if (game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Skill")) and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Possession") then
+        end
+    end
+    if game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Possession") then
+        pcall(function()
+            for i,v in next, game.Players:GetChildren() do
+                if v and v.Character and v~=game.Players.LocalPlayer and v.Team~=game.Players.LocalPlayer.Team and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("HumanoidRootPart") and v.Character:FindFirstChildOfClass("Humanoid") and v.Character:FindFirstChildOfClass("Humanoid").Health>0 then
+                    local Defender = v
+                    --print(Defender.Name)
+
+                    local MyDistance = (XZ(game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Position) - XZ(Defender.Character.HumanoidRootPart.Position)).Magnitude
+                    
+                    local dotProduct, velocitydot = isCharacterLookingAtPlayer(Defender.Character, game:GetService("Players").LocalPlayer)
+                    if Defender.Character.InstanceValue:FindFirstChild("SlideTackle") and (MyDistance <= 5 or (MyDistance < 19.5 and (dotProduct > 0.7 or velocitydot >= 25))) then
+                        dribble()
+                    end
+                    if Defender.Character.InstanceValue:FindFirstChild("Skill") then
+                        local Skill = Defender.Character.InstanceValue:FindFirstChild("Skill").Value
+
+                        if #Skill>0 then
+                            if Skill == "Ice Ground" then
+                                delay(0.1, function()
+                                    if MyDistance < 20 and (dotProduct > 0.7 or velocitydot >= 25) then
+                                        dribble()
+                                    end
+                                end)
+                            elseif Skill == "Ignited Steal" then
+                                if MyDistance < 28 and (dotProduct > 0.7 or velocitydot >= 25) then
+                                    dribble()
+                                end
+                            elseif Skill == "Killer Slide" then
+                                if MyDistance < 14 then
+                                    dribble()
+                                end
+                            elseif Skill == "Spiral Draw" then
+                                if MyDistance < 14 then
+                                    dribble()
+                                end
+                            elseif MyDistance < 30 then
+                                if not check(Defender) then
+                                    dribble()
+                                end
+                            end 
+                        end
+
+                    end
+                   -- print(Defender.Character["Right Leg"].CFrame.LookVector.Y>0.7 and Defender.Character["Right Leg"].CFrame.LookVector.Y<0.8)
+                    --if Defender.Character["Right Leg"].CFrame.LookVector.Y>0.7 and Defender.Character["Right Leg"].CFrame.LookVector.Y<0.8 then
+                    if Defender.Character.InstanceValue:FindFirstChild("ChargingKick") then
+                        --print(Defender.Character["Right Leg"].CFrame.LookVector.Y)
+                    --if Defender.Character.InstanceValue:FindFirstChild("Kick") or checkAnimations(steptackle, Defender.Character:FindFirstChildOfClass("Humanoid")) or Defender.Character.InstanceValue:FindFirstChild("ChargingKick") or checkAnimations(holdkick, Defender.Character:FindFirstChildOfClass("Humanoid")) then
+                        if MyDistance<12 then
+                            dribble()
+                        end
+                    end
+                    
+                end
+            end
+        end)
+    end
+
+
+end)
+
+game.UserInputService.InputBegan:connect(function(input)
+	if input.KeyCode == Enum.KeyCode.End then
+		pcall(function()
+            game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Size = Vector3.new(2,2,1)
+			if runLoop then
+				runLoop:Disconnect()
+			end
+		end)
+	end
 end)

@@ -1,7 +1,7 @@
 local VirtualInputManager = Instance.new('VirtualInputManager')
 
 
-wait(2)
+
 ------------------------------------------------------------------------------------------------------------------------------------
 local based = 0
 local runLoop

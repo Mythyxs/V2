@@ -257,16 +257,27 @@ end
     end
     ]]--
 
-    pcall(function()
+        pcall(function()
         if game.PlaceId == 130976392556634 then
             local args = {
+                [1] = {
+                    [1] = "Blue",
+                    [2] = "FW"
+                }
+            }
+            if game.Players.LocalPlayer.Team == nil then
+                game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("MatchInfo"):FireServer(unpack(args))
+            end
+
+            args = {
                 [1] = {
                     [1] = "Red",
                     [2] = "FW"
                 }
             }
-            
-            game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("MatchInfo"):FireServer(unpack(args))
+            if game.Players.LocalPlayer.Team == nil then
+                game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("MatchInfo"):FireServer(unpack(args))
+            end
         end
     end)
 

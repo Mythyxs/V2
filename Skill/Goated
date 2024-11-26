@@ -11,7 +11,7 @@ local function updateCollider(collider)
     if collider and collider:IsA("BasePart") then
         collider.Transparency = 0
         collider.Shape = Enum.PartType.Block
-        collider.Size = Vector3.new(15, 10, 15)
+        collider.Size = Vector3.new(10, 10, 10)
     end
 end
 

@@ -1,1 +1,249 @@
-print("broke")
+-- LocalPlayer reference
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+
+-- Variables to manage state and cleanup
+local connections = {}
+local scriptActive = true
+local defenseActive = false
+
+-- Rim references
+local rim1 = Workspace.Hoops.Hoop1.Backboard.Functionals.Objects.Rim.Rim
+local rim2 = Workspace.Hoops.Hoop2.Backboard.Functionals.Objects.Rim.Rim
+
+-- Categorized animation tables
+local ShootingAnims = {
+    ReplicatedStorage.Assets.Animations.Server.Shooting.Jumpshots["1"],
+    ReplicatedStorage.Assets.Animations.Server.Shooting.Jumpshots["2"],
+    ReplicatedStorage.Assets.Animations.Server.Shooting.Fadeaways.Fadeaway["1"]
+}
+
+local LayupAnims = {
+    ReplicatedStorage.Assets.Animations.Server.Shooting.CloseShots.Layups["1"],
+    ReplicatedStorage.Assets.Animations.Server.Shooting.CloseShots.Layups["2"],
+    ReplicatedStorage.Assets.Animations.Server.Shooting.CloseShots.Layups["3"]
+}
+
+local DunkAnims = {
+    ReplicatedStorage.Assets.Animations.Server.Dunks.Windmill,
+    ReplicatedStorage.Assets.Animations.Server.Dunks.TomahawkTwoRight,
+    ReplicatedStorage.Assets.Animations.Server.Dunks["360 Dunk"]
+}
+
+-- Helper function to collect AnimationIds
+local function collectAnimationIds(folders)
+    local animations = {}
+    for _, folder in ipairs(folders) do
+        for _, child in ipairs(folder:GetChildren()) do
+            if child:IsA("Animation") then
+                animations[child.AnimationId] = true
+            end
+        end
+    end
+    return animations
+end
+
+-- Collect AnimationIds for each category
+local ShootingIds = collectAnimationIds(ShootingAnims)
+local LayupIds = collectAnimationIds(LayupAnims)
+local DunkIds = collectAnimationIds(DunkAnims)
+
+-- Function to detect the current animation type
+local function detectAnimationType(character)
+    if not character:FindFirstChild("Humanoid") then return nil end
+    local animator = character.Humanoid:FindFirstChildOfClass("Animator")
+    if not animator then return nil end
+
+    for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+        if track.Animation and track.Animation.AnimationId then
+            local animId = track.Animation.AnimationId
+            if ShootingIds[animId] then
+                return "shooting"
+            elseif LayupIds[animId] then
+                return "layup"
+            elseif DunkIds[animId] then
+                return "dunk"
+            end
+        end
+    end
+    return nil
+end
+
+-- Create the CourtZone part
+local part = Instance.new("Part")
+part.Name = "CourtZone"
+part.Size = Vector3.new(136.60000610351562, 30, 79.5999984741211)
+part.Transparency = 1 -- Fully transparent
+part.Anchored = true -- Makes the part stay in position
+part.CanCollide = false -- Makes the part non-collidable
+part.CastShadow = false -- Disables shadow casting
+part.Parent = workspace
+
+-- Set the position and orientation (CFrame) of the part
+part.CFrame = CFrame.new(67.3499985, 6.52630711, -137.550003)
+
+-- Function to check if a position is within the CourtZone
+local function isInZone(position)
+    local zonePosition = part.Position
+    local zoneSize = part.Size / 2
+    if math.abs(position.X - zonePosition.X) <= zoneSize.X and
+       math.abs(position.Y - zonePosition.Y) <= zoneSize.Y and
+       math.abs(position.Z - zonePosition.Z) <= zoneSize.Z then
+        return true
+    end
+    return false
+end
+
+-- Basketball detection function
+local function findBallHandler()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local humanoidRootPart = player.Character.HumanoidRootPart
+            if humanoidRootPart:FindFirstChild("Basketball") then
+                local basketball = humanoidRootPart.Basketball
+                if basketball.Part1 and basketball.Part1.Name == "Basketball" then
+                    return player -- Return the player with the basketball
+                end
+            end
+        end
+    end
+    return nil -- No ball handler found
+end
+
+-- Function to calculate the guarding position with prediction
+local function calculateGuardPosition(ballHandlerRoot, targetRim, animationType)
+    local ballPosition = ballHandlerRoot.Position
+    local rimPosition = targetRim.Position
+    local ballVelocity = ballHandlerRoot.Velocity
+
+    -- Prediction factor
+    local predictionTime = 0.3 -- seconds to predict ahead
+    local predictedBallPosition = ballPosition + (ballVelocity * predictionTime)
+
+    -- Calculate the direction vector from the rim to the predicted ball position
+    local directionToRim = (rimPosition - predictedBallPosition).Unit
+
+    -- Adjust guard position based on animation type
+    local guardPosition
+    if animationType == "dunk" then
+        guardPosition = predictedBallPosition + directionToRim * 9
+    elseif animationType == "layup" then
+        guardPosition = predictedBallPosition + directionToRim * 10
+    elseif animationType == "shooting" then
+        guardPosition = predictedBallPosition + directionToRim * 2
+    else -- Default to shooting guard position
+        guardPosition = predictedBallPosition + directionToRim * 6
+    end
+
+    return guardPosition
+end
+
+-- Determine the hoop to guard based on proximity
+local function determineTargetRim()
+    local rootPart = Character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return nil end
+
+    -- Calculate distances to both rims
+    local distanceToRim1 = (rim1.Position - rootPart.Position).Magnitude
+    local distanceToRim2 = (rim2.Position - rootPart.Position).Magnitude
+
+    return distanceToRim1 < distanceToRim2 and rim1 or rim2
+end
+
+-- Autodefense function: Guard based on nearest rim with prediction
+local function autoFollow(targetPlayer)
+    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local targetRoot = targetPlayer.Character.HumanoidRootPart
+        local humanoid = Character:FindFirstChild("Humanoid")
+        local rootPart = Character:FindFirstChild("HumanoidRootPart")
+        if humanoid and rootPart then
+            -- Check distance and zone conditions
+            local distance = (targetRoot.Position - rootPart.Position).Magnitude
+            if distance <= 15 and isInZone(targetRoot.Position) then
+                -- Determine which rim to defend based on proximity
+                local targetRim = determineTargetRim()
+
+                -- Detect the animation type
+                local animationType = detectAnimationType(targetPlayer.Character)
+
+                -- Calculate the guard position with prediction
+                local guardPosition = calculateGuardPosition(targetRoot, targetRim, animationType)
+
+                -- Move the local player to the guard position
+                local direction = (guardPosition - rootPart.Position).Unit
+                humanoid:Move(Vector3.new(direction.X, 0, direction.Z))
+            end
+        end
+    end
+end
+
+-- Main loop
+local function mainLoop()
+    table.insert(connections, RunService.RenderStepped:Connect(function()
+        if not scriptActive then return end
+
+        -- Check if local player is playing defense
+        if defenseActive then
+            -- Find the player with the basketball
+            local ballHandler = findBallHandler()
+            if ballHandler and ballHandler ~= LocalPlayer then
+                autoFollow(ballHandler)
+            end
+        end
+    end))
+end
+
+-- Key listener for defense activation
+table.insert(connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    -- Check for left click or DPadUp
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.DPadUp then
+        defenseActive = true
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.G, false, nil)
+    end
+end))
+
+table.insert(connections, UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    -- Check for left click or DPadUp
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.DPadUp then
+        defenseActive = false
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.G, false, nil)
+    end
+end))
+
+-- Key listener for termination
+table.insert(connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    -- Check for the End key
+    if input.KeyCode == Enum.KeyCode.End then
+        scriptActive = false
+
+        -- Disconnect all connections
+        for _, connection in pairs(connections) do
+            if connection and connection.Disconnect then
+                connection:Disconnect()
+            end
+        end
+
+        -- Clear variables and objects
+        connections = nil
+        findBallHandler = nil
+        isPlayingDefense = nil
+        autoFollow = nil
+
+        print("Script terminated and cleaned up.")
+    end
+end))
+
+-- Start the main loop
+mainLoop()

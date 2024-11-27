@@ -1,0 +1,79 @@
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local humanoid = player.Character:WaitForChild("Humanoid")
+
+-- Function to constantly set SprintSpeed and WalkSpeed
+local function setSpeed()
+    game:GetService("Players").LocalPlayer.State.SprintSpeed.Value = 16
+    game:GetService("Players").LocalPlayer.State.WalkSpeed.Value = 14
+end
+
+-- Connect the setSpeed function to the RenderStepped event to continuously set the speeds
+game:GetService("RunService").RenderStepped:Connect(setSpeed)
+
+local HumanModCons = {}
+
+-- Function to handle speed change
+local function loopSpeed(speaker)
+    local sprintSpeed = player.State.SprintSpeed.Value
+    local walkSpeed = player.State.WalkSpeed.Value
+    local Char = speaker.Character or workspace:FindFirstChild(speaker.Name)
+    local Human = Char and Char:FindFirstChildWhichIsA("Humanoid")
+    
+    local function WalkSpeedChange()
+        if Char and Human then
+            local isSprinting = false
+            for _, track in pairs(Human:GetPlayingAnimationTracks()) do
+                if track.Animation.AnimationId == "rbxassetid://13060081040" then
+                    isSprinting = true
+                    break
+                end
+            end
+            -- Only update WalkSpeed if it differs from the current value to prevent re-entrancy
+            local desiredSpeed = isSprinting and sprintSpeed or walkSpeed
+            if Human.WalkSpeed ~= desiredSpeed then
+                Human.WalkSpeed = desiredSpeed
+            end
+        end
+    end
+    
+    WalkSpeedChange()
+    HumanModCons.wsLoop = (HumanModCons.wsLoop and HumanModCons.wsLoop:Disconnect() and false) or Human:GetPropertyChangedSignal("WalkSpeed"):Connect(WalkSpeedChange)
+    HumanModCons.wsCA = (HumanModCons.wsCA and HumanModCons.wsCA:Disconnect() and false) or speaker.CharacterAdded:Connect(function(nChar)
+        Char, Human = nChar, nChar:WaitForChild("Humanoid")
+        WalkSpeedChange()
+        HumanModCons.wsLoop = (HumanModCons.wsLoop and HumanModCons.wsLoop:Disconnect() and false) or Human:GetPropertyChangedSignal("WalkSpeed"):Connect(WalkSpeedChange)
+    end)
+end
+
+-- Function to unloop speed
+local function unloopSpeed()
+    HumanModCons.wsLoop = (HumanModCons.wsLoop and HumanModCons.wsLoop:Disconnect() and false) or nil
+    HumanModCons.wsCA = (HumanModCons.wsCA and HumanModCons.wsCA:Disconnect() and false) or nil
+end
+
+-- Connect the loopSpeed function to the RenderStepped event to continuously check and update the speed
+local connection = game:GetService("RunService").RenderStepped:Connect(function()
+    loopSpeed(player)
+end)
+
+-- Function to handle the 'End' key press to stop the script and remove it
+local function onEndKeyPress(input, gameProcessed)
+    if gameProcessed then return end
+
+    if input.KeyCode == Enum.KeyCode.End then
+        -- Disconnect the loopSpeed function
+        if connection then
+            connection:Disconnect()
+            connection = nil
+        end
+        -- Unloop speed
+        unloopSpeed()
+        game:GetService("Players").LocalPlayer.State.SprintSpeed.Value = 14
+        game:GetService("Players").LocalPlayer.State.WalkSpeed.Value = 12
+        script:Destroy()
+    end
+end
+
+-- Connect the function to the InputBegan event for the 'End' key
+game:GetService("UserInputService").InputBegan:Connect(onEndKeyPress)

@@ -10,7 +10,7 @@ local function createGoalPart(position)
     part.Shape = Enum.PartType.Ball
     part.Anchored = true
     part.Parent = nil
-    part.Transparency = 0
+    part.Transparency = 1
     return part
 end
 

@@ -224,9 +224,10 @@ function check(Defender)
            Skill == "Hunters Net" or 
            Skill == "Replenish" or 
            Skill == "Blackhole Trap" or 
-           Skill == "Ice Ground" or 
-           Skill == "Ignited Steal" or 
-           Skill == "Spiral Draw" then
+           --Skill == "Ice Ground" or 
+           --Skill == "Ignited Steal" or 
+           --Skill == "Spiral Draw" or 
+           Skill == "Photon Flash" then
             anyTrue = true
         end
 
@@ -323,10 +324,10 @@ end
                     if Defender.Character.InstanceValue:FindFirstChild("Skill") then
                         local Skill = Defender.Character.InstanceValue:FindFirstChild("Skill").Value
 
-                        if #Skill>0 then
+                        if #Skill > 0 then
                             if Skill == "Ice Ground" then
                                 delay(0.1, function()
-                                    if MyDistance < 20 and (dotProduct > 0.7 or velocitydot >= 25) then
+                                    if MyDistance < 25 and (dotProduct > 0.7 or velocitydot >= 25) then
                                         dribble()
                                     end
                                 end)
@@ -342,11 +343,17 @@ end
                                 if MyDistance < 14 then
                                     dribble()
                                 end
+                            elseif Skill == "Mega Quake" then
+                                delay(0.6, function()
+                                    if MyDistance < 30 then
+                                        dribble()
+                                    end
+                                end)
                             elseif MyDistance < 30 then
                                 if not check(Defender) then
                                     dribble()
                                 end
-                            end 
+                            end
                         end
 
                     end

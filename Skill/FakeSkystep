@@ -1,0 +1,65 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local animation = Instance.new("Animation")
+animation.AnimationId = "rbxassetid://116098099225987"
+local animationTrack = humanoid:LoadAnimation(animation)
+
+-- Store the connection for later disconnection
+local inputConnection
+local canUseSkill = true -- Cooldown flag
+
+local function playSkillMove()
+    humanoid.UseJumpPower = true -- Enable UseJumpPower when animation starts
+    animationTrack:Play()
+    task.wait(0.1)
+    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    humanoid.JumpPower = 45 -- Configure jump power for the first jump
+
+    delay(0.50, function()
+        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        humanoid.JumpPower = 45 -- Configure jump power for the second jump
+    end)
+
+    delay(1, function()
+        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        humanoid.JumpPower = 45 -- Configure jump power for the third jump
+    end)
+
+    animationTrack.Stopped:Connect(function()
+        humanoid.UseJumpPower = false -- Disable UseJumpPower when animation stops
+    end)
+end
+
+local function terminateScript()
+    if animationTrack.IsPlaying then
+        animationTrack:Stop()
+    end
+    animation:Destroy()
+    
+    if inputConnection then
+        inputConnection:Disconnect() -- Disconnect the InputBegan listener
+    end
+
+    script:Destroy()
+end
+
+inputConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    local instanceValue = character:FindFirstChild("InstanceValue")
+    local possession = instanceValue and instanceValue:FindFirstChild("Possession")
+    if input.KeyCode == Enum.KeyCode.Five and canUseSkill and possession then
+        playSkillMove()
+        canUseSkill = false
+        delay(15, function() -- 20 second cooldown
+            canUseSkill = true
+        end)
+    elseif input.KeyCode == Enum.KeyCode.End then
+        terminateScript()
+    end
+end)

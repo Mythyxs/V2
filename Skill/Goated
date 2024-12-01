@@ -1,25 +1,51 @@
 -- Isolate the loadstring execution
 spawn(function()
     pcall(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/Skill/Dribble"))() -- additional script
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/Skill/Dribble"))() -- additional script
         loadstring(game:HttpGet("https://pastebin.com/raw/fTgjaBZG"))() -- script with all the skills & speed multipliers
     end)
 end)
 
 -- Function to update Collider properties
-local function updateCollider(collider)
-    if collider and collider:IsA("BasePart") then
-        collider.Transparency = 0
-        collider.Shape = Enum.PartType.Block
-        collider.Size = Vector3.new(8, 10, 8)
-    end
+local function updateCollider(ball)
+    if not ball then return end
+
+    -- Find the regular Collider
+    local regularCollider = ball:FindFirstChild("Collider")
+    if not regularCollider or not regularCollider:IsA("BasePart") then return end
+
+    -- Allow changing the regular Collider's size
+    regularCollider.Size = Vector3.new(3, 3, 3) -- Example size, can be modified as needed
+
+    -- Create or update the fake collider 'Collide2'
+    local collide2 = ball:FindFirstChild("Collide2") or Instance.new("Part", ball)
+    collide2.Name = "Collide2"
+    collide2.CastShadow = false
+    collide2.Color = Color3.new(117 / 255, 0, 0)
+    collide2.Material = Enum.Material.ForceField
+    collide2.Reflectance = 0
+    collide2.Transparency = 0
+    collide2.CanCollide = false
+    collide2.CanQuery = false
+    collide2.CanTouch = false
+    collide2.Anchored = regularCollider.Anchored
+    collide2.Shape = Enum.PartType.Block
+
+    -- Set Collide2's size to 10,10,10
+    collide2.Size = Vector3.new(10, 10, 10)
+    collide2.CFrame = regularCollider.CFrame
+
+    -- Create and configure the Attachment
+    local attachment = collide2:FindFirstChildOfClass("Attachment") or Instance.new("Attachment", collide2)
+    attachment.CFrame = CFrame.new(0, 0, 0)
+    attachment.Axis = Vector3.new(1, 0, 0)
+    attachment.SecondaryAxis = Vector3.new(0, 1, 0)
 end
 
 -- Function to process a single ball
 local function processBall(ball)
     if ball.Name == "/e ball" then
-        local collider = ball:FindFirstChild("Collider")
-        updateCollider(collider)
+        updateCollider(ball)
     end
 end
 

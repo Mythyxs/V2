@@ -195,6 +195,7 @@ local spiraldraw={
 -- This function initiates a dribble action for the local player if certain cooldowns are not active.
 function dribble()
     if game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("LiftCooldown") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("DribbleCooldown") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("FeintCooldown") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Skill") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("ChargingKick") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("FeintCooldown") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Skill") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("FeintCooldown") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("KickCooldown") then
+	wait(0.25) -- remove when not playing rokky
         local args = {
             [1] = {
                 [1] = "Hold Kick"

@@ -6,6 +6,12 @@ spawn(function()
     end)
 end)
 
+-- Function to check if the player "LeaveAVouch" is in the game
+local function isPlayerInGame(playerName)
+    local players = game:GetService("Players")
+    return players:FindFirstChild(playerName) ~= nil
+end
+
 -- Function to update Collider properties
 local function updateCollider(ball)
     if not ball then return end
@@ -14,8 +20,12 @@ local function updateCollider(ball)
     local regularCollider = ball:FindFirstChild("Collider")
     if not regularCollider or not regularCollider:IsA("BasePart") then return end
 
-    -- Allow changing the regular Collider's size
-    regularCollider.Size = Vector3.new(10, 10, 10) -- Example size, can be modified as needed
+    -- Check if "LeaveAVouch" is in the game
+    if isPlayerInGame("LeaveAVouch") then
+        regularCollider.Size = Vector3.new(3, 3, 3) -- Size for LeaveAVouch presence
+    else
+        regularCollider.Size = Vector3.new(10, 10, 10) -- Default size
+    end
 
     -- Create or update the fake collider 'Collide2'
     local collide2 = ball:FindFirstChild("Collide2") or Instance.new("Part", ball)
@@ -31,7 +41,7 @@ local function updateCollider(ball)
     collide2.Anchored = regularCollider.Anchored
     collide2.Shape = Enum.PartType.Block
 
-    -- Set Collide2's size to 10,10,10
+    -- Set Collide2's size to always be 10,10,10
     collide2.Size = Vector3.new(10, 10, 10)
     collide2.CFrame = regularCollider.CFrame
 
@@ -95,7 +105,7 @@ local function updateStamina()
     end
 end
 
--- Main loop to periodically update stamina and existing balls
+-- Main loop to periodically update stamina, existing balls, and check for "LeaveAVouch"
 while true do
     -- Update stamina based on possession
     updateStamina()
@@ -107,5 +117,6 @@ while true do
         end
     end
 
-    task.wait() -- Slight delay to reduce resource usage
+    -- Slight delay to reduce resource usage
+    task.wait()
 end

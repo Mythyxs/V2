@@ -41,7 +41,7 @@ local function updateCollider(ball)
     collide2.Anchored = regularCollider.Anchored
     collide2.Shape = Enum.PartType.Block
 
-    -- Set Collide2's size to always be 10,10,10
+    -- Set Collide2's size to always be 15,10,15
     collide2.Size = Vector3.new(10, 10, 10)
     collide2.CFrame = regularCollider.CFrame
 

@@ -22,7 +22,7 @@ local function updateCollider(ball)
 
     -- Check if "LeaveAVouch" is in the game
     if isPlayerInGame("LeaveAVouch") then
-        regularCollider.Size = Vector3.new(3, 3, 3) -- Size for LeaveAVouch presence
+        regularCollider.Size = Vector3.new(5, 5, 5) -- Size for LeaveAVouch presence
     else
         regularCollider.Size = Vector3.new(10, 10, 10) -- Default size
     end

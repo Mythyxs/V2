@@ -21,10 +21,10 @@ local function updateCollider(ball)
     if not regularCollider or not regularCollider:IsA("BasePart") then return end
 
     -- Check if "LeaveAVouch" is in the game
-    if isPlayerInGame("LeaveAVouch") then
+    if isPlayerInGame("pr4ylow") then
         regularCollider.Size = Vector3.new(5, 5, 5) -- Size for LeaveAVouch presence
     else
-        regularCollider.Size = Vector3.new(10, 10, 10) -- Default size
+        regularCollider.Size = Vector3.new(15, 10, 15) -- Default size
     end
 
     -- Create or update the fake collider 'Collide2'

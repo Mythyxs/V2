@@ -1,6 +1,6 @@
 local VirtualInputManager = Instance.new('VirtualInputManager')
 
--- ** this is the one with Kick **
+-- ** this is the one with Kick | this ass dont use **
 
 ------------------------------------------------------------------------------------------------------------------------------------
 local based = 0

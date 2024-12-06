@@ -15,10 +15,10 @@ local function createGoalPart(position)
 end
 
 -- Create all goals with their positions
-local redleft = createGoalPart(CFrame.new(-17520.4824, 807.393555, 221.899963, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1))
-local redright = createGoalPart(CFrame.new(-17520.4824, 807.393555, 260.7, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1))
-local blueleft = createGoalPart(CFrame.new(-18520.4824, 807.393555, 221.899963, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1))
-local blueright = createGoalPart(CFrame.new(-18520.4824, 807.393555, 260.7, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1))
+local redleft = createGoalPart(CFrame.new(-17520.4824, 797.393555, 221.899963, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1))
+local redright = createGoalPart(CFrame.new(-17520.4824, 797.393555, 260.7, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1))
+local blueleft = createGoalPart(CFrame.new(-18520.4824, 797.393555, 221.899963, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1))
+local blueright = createGoalPart(CFrame.new(-18520.4824, 797.393555, 260.7, -1, -8.63220121e-05, 0, -8.63220121e-05, 1, 0, -0, 0, -1))
 
 -- Set team colors
 redleft.Color = Color3.fromRGB(255, 0, 0)
@@ -121,19 +121,31 @@ end)
 
 local isAiming = false
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.UserInputType == Enum.UserInputType.MouseButton3 then
+    if input.UserInputType == Enum.UserInputType.MouseButton3 or input.KeyCode == Enum.KeyCode.ButtonY then
         isAiming = true
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input, gameProcessed)
-    if input.UserInputType == Enum.UserInputType.MouseButton3 then
+    if input.UserInputType == Enum.UserInputType.MouseButton3 or input.KeyCode == Enum.KeyCode.ButtonY then
         isAiming = false
     end
 end)
 
+local function hasPossession()
+    local localCharacter = workspace.Players:FindFirstChild(LocalPlayer.Name)
+    
+    if localCharacter and localCharacter:FindFirstChild("InstanceValue") then
+        local localInstanceFolder = localCharacter.InstanceValue
+        if localInstanceFolder:FindFirstChild("Possession") and localInstanceFolder.Possession.Value then
+            return true
+        end
+    end
+    return false
+end
+
 aimConnection = RunService.RenderStepped:Connect(function()
-    if isAiming and isScriptActive then
+    if isAiming and isScriptActive and hasPossession() then
         local target = getClosestPart()
         if target then
             local targetPos = target.Position

@@ -1,54 +1,123 @@
 -- Isolate the loadstring execution
 spawn(function()
     pcall(function()
-        loadstring(game:HttpGet("https://pastebin.com/raw/fTgjaBZG"))() -- script with all the skills & speed multipliers
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/Skill/Dribble"))() -- additional script
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/Skill/GoalAim"))()
+                loadstring(game:HttpGet("https://pastebin.com/raw/fTgjaBZG"))() -- script with all the skills & speed multipliers
     end)
 end)
 
--- Main loop
-while true do
-    -- Keep Stamina and Flow at 100
+-- Function to check if the player "LeaveAVouch" is in the game
+local function isPlayerInGame(playerName)
+    local players = game:GetService("Players")
+    return players:FindFirstChild(playerName) ~= nil
+end
+
+-- Function to update Collider properties
+local function updateCollider(ball)
+    if not ball then return end
+
+    -- Find the regular Collider
+    local regularCollider = ball:FindFirstChild("Collider")
+    if not regularCollider or not regularCollider:IsA("BasePart") then return end
+
+    -- Check if "LeaveAVouch" is in the game
+    if isPlayerInGame("pr4ylow") then
+        regularCollider.Size = Vector3.new(5, 5, 5) -- Size for LeaveAVouch presence
+    else
+        regularCollider.Size = Vector3.new(5, 5, 5) -- Default size
+    end
+
+    -- Create or update the fake collider 'Collide2'
+    local collide2 = ball:FindFirstChild("Collide2") or Instance.new("Part", ball)
+    collide2.Name = "Collide2"
+    collide2.CastShadow = false
+    collide2.Color = Color3.new(117 / 255, 0, 0)
+    collide2.Material = Enum.Material.ForceField
+    collide2.Reflectance = 0
+    collide2.Transparency = 0
+    collide2.CanCollide = false
+    collide2.CanQuery = false
+    collide2.CanTouch = false
+    collide2.Anchored = regularCollider.Anchored
+    collide2.Shape = Enum.PartType.Block
+
+    -- Set Collide2's size to always be 10,10,10
+    collide2.Size = Vector3.new(5, 5, 5)
+    collide2.CFrame = regularCollider.CFrame
+
+    -- Create and configure the Attachment
+    local attachment = collide2:FindFirstChildOfClass("Attachment") or Instance.new("Attachment", collide2)
+    attachment.CFrame = CFrame.new(0, 0, 0)
+    attachment.Axis = Vector3.new(1, 0, 0)
+    attachment.SecondaryAxis = Vector3.new(0, 1, 0)
+end
+
+-- Function to process a single ball
+local function processBall(ball)
+    if ball.Name == "/e ball" then
+        updateCollider(ball)
+    end
+end
+
+-- Monitor Messi folder for new balls
+local messiFolder = workspace:FindFirstChild("Messi")
+if messiFolder then
+    -- Update existing balls
+    for _, model in pairs(messiFolder:GetChildren()) do
+        processBall(model)
+    end
+
+    -- Listen for new balls being added
+    messiFolder.ChildAdded:Connect(function(newBall)
+        processBall(newBall)
+    end)
+end
+
+-- Function to check if LocalPlayer has possession
+local function hasPossession()
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local localCharacter = workspace.Players:FindFirstChild(LocalPlayer.Name)
+    
+    if localCharacter and localCharacter:FindFirstChild("InstanceValue") then
+        local localInstanceFolder = localCharacter.InstanceValue
+        if localInstanceFolder:FindFirstChild("Possession") and localInstanceFolder.Possession.Value then
+            return true
+        end
+    end
+    return false
+end
+
+-- Function to handle stamina updates based on possession
+local function updateStamina()
     local localPlayer = game.Players.LocalPlayer
     local playerInfo = workspace.Players[localPlayer.Name].PlayerInfo
-    playerInfo.Stamina.Value = 100
-    playerInfo.JumpMultiplier.Value = 2
 
-    -- Modify legs
-    local leftLeg = workspace.Players[localPlayer.Name]["Left Leg"]
-    local rightLeg = workspace.Players[localPlayer.Name]["Right Leg"]
+    -- Ensure stamina does not go below 3
+    if playerInfo.Stamina.Value < 5 then
+        playerInfo.Stamina.Value = 7
+    end
 
-    -- Store original sizes
-    local originalSize = Vector3.new(1, 2, 1)
+    -- Update stamina based on possession
+    if not hasPossession() then
+        -- Set stamina to 100 when not in possession
+        playerInfo.Stamina.Value = 100
+    end
+end
 
-    -- Create visual legs
-    local visualLeftLeg = leftLeg:Clone()
-    visualLeftLeg.Parent = leftLeg
-    visualLeftLeg.Size = originalSize
-    visualLeftLeg.CanCollide = false
-    visualLeftLeg.Transparency = 0
-    visualLeftLeg.Massless = true
+-- Main loop to periodically update stamina, existing balls, and check for "LeaveAVouch"
+while true do
+    -- Update stamina based on possession
+    updateStamina()
 
-    local visualRightLeg = rightLeg:Clone()
-    visualRightLeg.Parent = rightLeg
-    visualRightLeg.Size = originalSize
-    visualRightLeg.CanCollide = false
-    visualRightLeg.Transparency = 0
-    visualRightLeg.Massless = true
+    -- Update all existing balls in Messi folder
+    if messiFolder then
+        for _, model in pairs(messiFolder:GetChildren()) do
+            processBall(model)
+        end
+    end
 
-    -- Set hitbox legs size and properties
-    leftLeg.Size = Vector3.new(20, 2, 20)
-    leftLeg.CanCollide = false
-    leftLeg.Transparency = 1
-    leftLeg.Massless = true
-
-    rightLeg.Size = Vector3.new(20, 2, 20)
-    rightLeg.CanCollide = false
-    rightLeg.Transparency = 1
-    rightLeg.Massless = true
-
-    task.wait() -- Wait a frame before next update
-
-    -- Clean up visual legs before next iteration
-    visualLeftLeg:Destroy()
-    visualRightLeg:Destroy()
+    -- Slight delay to reduce resource usage
+    task.wait()
 end

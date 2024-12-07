@@ -2,8 +2,8 @@
 spawn(function()
     pcall(function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/Skill/Dribble"))() -- additional script
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/Skill/GoalAim"))()
-                loadstring(game:HttpGet("https://pastebin.com/raw/fTgjaBZG"))() -- script with all the skills & speed multipliers
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/Skill/GoalAim"))()
+        loadstring(game:HttpGet("https://pastebin.com/raw/fTgjaBZG"))() -- script with all the skills & speed multipliers
     end)
 end)
 
@@ -105,6 +105,75 @@ local function updateStamina()
         playerInfo.Stamina.Value = 100
     end
 end
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- AntiPhotonFlash Feature
+local function AntiPhotonFlash()
+    local player = game:GetService("Players").LocalPlayer
+    local screenGuiName = "ScreenGui"
+    local userInputService = game:GetService("UserInputService")
+
+    local isRunning = true -- A flag to manage the script
+
+    -- Safely sets visibility or transparency
+    local function makeInvisible(instance)
+        pcall(function()
+            if instance:IsA("GuiObject") then
+                instance.Visible = false -- Make the object invisible
+            elseif instance:IsA("Frame") then
+                for _, child in pairs(instance:GetDescendants()) do
+                    if child:IsA("GuiObject") then
+                        child.Visible = false -- Make all children invisible
+                    end
+                end
+            elseif instance:IsA("TextLabel") or instance:IsA("ImageLabel") then
+                instance.BackgroundTransparency = 1 -- Fully transparent
+                instance.TextTransparency = 1 -- Hide text (if applicable)
+            end
+        end)
+    end
+
+    -- Makes the ScreenGui and all its descendants invisible
+    local function processScreenGui(screenGui)
+        if screenGui and screenGui:IsA("ScreenGui") then
+            screenGui.Enabled = false -- Disable the entire ScreenGui
+            for _, child in pairs(screenGui:GetDescendants()) do
+                makeInvisible(child)
+            end
+        end
+    end
+
+    -- Monitor the PlayerGui for new ScreenGui additions
+    local childAddedConnection = player.PlayerGui.ChildAdded:Connect(function(child)
+        if isRunning and child.Name == screenGuiName then
+            processScreenGui(child)
+        end
+    end)
+
+    -- Handle End key press to stop the script
+    userInputService.InputBegan:Connect(function(input, gameProcessed)
+        if input.KeyCode == Enum.KeyCode.End then
+            isRunning = false
+            if childAddedConnection then
+                childAddedConnection:Disconnect()
+            end
+        end
+    end)
+
+    -- Initial scan for existing ScreenGui
+    while isRunning do
+        local screenGui = player.PlayerGui:FindFirstChild(screenGuiName)
+        if screenGui then
+            processScreenGui(screenGui)
+        end
+        task.wait(0.01) -- Faster interval for initial scan
+    end
+end
+
+spawn(AntiPhotonFlash)
+
+------------------------------------------------------------------------------------------------------------------------------------------------
 
 -- Main loop to periodically update stamina, existing balls, and check for "LeaveAVouch"
 while true do

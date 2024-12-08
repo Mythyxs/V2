@@ -1,6 +1,6 @@
 local VirtualInputManager = Instance.new('VirtualInputManager')
 
--- ** this is the one with Kick | this ass dont use **
+-- ** this is the good current one using regress **
 
 ------------------------------------------------------------------------------------------------------------------------------------
 local based = 0
@@ -105,8 +105,14 @@ local function XZ(V)
 end
 
 -- Define regression models for dynamic thresholds
-local function regressionModelDotProduct(distance)
-    return 0.5 + (distance * -0.01)
+local function quadraticModelDotProduct(distance)
+    -- Quadratic model: tighter thresholds at close distances, looser at longer distances
+    return 0.5 + (distance * -0.01) + (distance^2 * 0.0001)
+end
+
+local function logarithmicModelDotProduct(distance)
+    -- Logarithmic model: diminishing rate of change as distance increases
+    return 0.5 + math.log(distance + 1) * -0.05
 end
 
 local function regressionModelVelocityDot(distance)
@@ -117,7 +123,7 @@ end
 -- between the character's forward direction and the direction to the player. It returns two values:
 -- the dot product indicating the alignment of the character's forward direction with the player,
 -- and the dot product of the character's velocity with the direction to the player.
-local function isCharacterLookingAtPlayer(character, player)
+local function isCharacterLookingAtPlayer(character, player, modelType)
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart then return false end
 
@@ -137,7 +143,14 @@ local function isCharacterLookingAtPlayer(character, player)
 
     -- Calculate dynamic thresholds based on distance
     local distance = (characterPosition - playerPosition).Magnitude
-    local dotProductThreshold = regressionModelDotProduct(distance)
+    local dotProductThreshold
+    if modelType == "quadratic" then
+        dotProductThreshold = quadraticModelDotProduct(distance)
+    elseif modelType == "logarithmic" then
+        dotProductThreshold = logarithmicModelDotProduct(distance)
+    else
+        dotProductThreshold = 0.5 + (distance * -0.01) -- Default to linear if no modelType is specified
+    end
     local velocityDotThreshold = regressionModelVelocityDot(distance)
 
     -- Check if the dot product indicates the character is looking in the player's direction
@@ -307,7 +320,7 @@ end
 
                     local MyDistance = (XZ(game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Position) - XZ(Defender.Character.HumanoidRootPart.Position)).Magnitude
                     
-                    local dotProduct, velocitydot, dotProductThreshold, velocityDotThreshold = isCharacterLookingAtPlayer(Defender.Character, game:GetService("Players").LocalPlayer)
+                    local dotProduct, velocitydot, dotProductThreshold, velocityDotThreshold = isCharacterLookingAtPlayer(Defender.Character, game:GetService("Players").LocalPlayer, "quadratic")
                     if Defender.Character.InstanceValue:FindFirstChild("SlideTackle") and (MyDistance <= 5 or (MyDistance < 12 and (dotProduct > dotProductThreshold or velocitydot >= velocityDotThreshold))) then
                         dribble()
                     end
@@ -349,9 +362,9 @@ end
                     end
                    -- print(Defender.Character["Right Leg"].CFrame.LookVector.Y>0.7 and Defender.Character["Right Leg"].CFrame.LookVector.Y<0.8)
                     --if Defender.Character["Right Leg"].CFrame.LookVector.Y>0.7 and Defender.Character["Right Leg"].CFrame.LookVector.Y<0.8 then
-                   -- if Defender.Character.InstanceValue:FindFirstChild("Kick") then
+                    if Defender.Character.InstanceValue:FindFirstChild("ChargingKick") then
                         --print(Defender.Character["Right Leg"].CFrame.LookVector.Y)
-                    if Defender.Character.InstanceValue:FindFirstChild("Kick") or checkAnimations(steptackle, Defender.Character:FindFirstChildOfClass("Humanoid")) or Defender.Character.InstanceValue:FindFirstChild("ChargingKick") or checkAnimations(holdkick, Defender.Character:FindFirstChildOfClass("Humanoid")) then
+                    --if Defender.Character.InstanceValue:FindFirstChild("Kick") or checkAnimations(steptackle, Defender.Character:FindFirstChildOfClass("Humanoid")) or Defender.Character.InstanceValue:FindFirstChild("ChargingKick") or checkAnimations(holdkick, Defender.Character:FindFirstChildOfClass("Humanoid")) then
                         if MyDistance<12 then
                             dribble()
                         end

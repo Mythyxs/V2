@@ -1,0 +1,414 @@
+local VirtualInputManager = Instance.new('VirtualInputManager')
+
+-- **This is the new shit lowkey fye**
+
+local hold = false
+local activate = false
+
+local function checkAnimations(animationIds, humanoid)
+	local playingTracks = humanoid:GetPlayingAnimationTracks()
+
+	-- Use a set to store unique animation IDs
+	local animationIdSet = {}
+	for _, animationId in ipairs(animationIds) do
+		animationIdSet[animationId] = true
+	end
+
+	for _, track in ipairs(playingTracks) do
+		local currentAnimation = track.Animation
+		if animationIdSet[currentAnimation.AnimationId] then
+			return true
+		end
+	end
+
+	return false
+end
+
+function Target()
+	local target = nil
+	local distance = math.huge
+
+	for i,v in next, game.Players:GetChildren() do
+		if v and v.Character and v~=game.Players.LocalPlayer and v.Team~=game.Players.LocalPlayer.Team and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("HumanoidRootPart") and v.Character:FindFirstChildOfClass("Humanoid") and v.Character:FindFirstChildOfClass("Humanoid").Health>0 then
+            if v.Character.InstanceValue:FindFirstChild("Possession") and not v.Character.InstanceValue:FindFirstChild("Dribble") and not v.Character.InstanceValue:FindFirstChild("Skill") then
+                local plrdist = game.Players.LocalPlayer:DistanceFromCharacter(v.Character:FindFirstChildOfClass('Humanoid').RootPart.CFrame.p)
+                if plrdist < distance then
+                    target = v
+                    distance = plrdist
+                end
+            end
+        end
+	end
+
+	return target
+end
+
+function dribbleball()
+    local target = nil
+    local distance = math.huge
+    pcall(function()
+        for i,b in next, workspace.Messi:GetChildren() do
+            if b.InstanceValue.LastTouched.Value == game.Players.LocalPlayer.Character and not b.InstanceValue:FindFirstChild("Possession") then
+                local plrdist = game.Players.LocalPlayer:DistanceFromCharacter(b:FindFirstChild("Football").CFrame.p)
+                if plrdist < distance then
+                    target = b:FindFirstChild("Football")
+                    distance = plrdist
+                end
+            end
+        end
+    end)    
+	return target
+end
+
+local iframe = false
+
+function ball()
+    local target = nil
+    local distance = math.huge
+    pcall(function()
+        for i,b in next, workspace.Messi:GetChildren() do
+            local plrdist = game.Players.LocalPlayer:DistanceFromCharacter(b:FindFirstChild("Football").CFrame.p)
+            if plrdist < distance then
+                target = b:FindFirstChild("Football")
+                distance = plrdist
+            end
+        end
+    end)    
+    if target~=nil then
+        if target.Parent.InstanceValue:FindFirstChild("IFrames") then
+            iframe = true
+        else
+            iframe = false
+        end
+    else
+        iframe = false
+    end
+	return target
+end
+
+
+function Defender()
+	local target = nil
+	local distance = math.huge
+
+    for i,v in next, game.Players:GetChildren() do
+        if v and v.Character and v~=game.Players.LocalPlayer and v.Team~=game.Players.LocalPlayer.Team and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("HumanoidRootPart") and v.Character:FindFirstChildOfClass("Humanoid") and v.Character:FindFirstChildOfClass("Humanoid").Health>0 then
+            local plrdist = game.Players.LocalPlayer:DistanceFromCharacter(v.Character:FindFirstChildOfClass('Humanoid').RootPart.CFrame.p)
+            if plrdist < distance then
+                target = v
+                distance = plrdist
+            end
+        end
+    end
+
+	return target
+end
+
+local function XZ(V)
+	return Vector3.new(V.X, 0, V.Z)
+end
+
+local function MoveTo(POS)
+    local humanoid = game.Players.LocalPlayer.Character.Humanoid
+    humanoid:MoveTo(POS)
+end
+
+function ballmag(character, ball)
+   -- pcall(function()
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") and part.TouchInterest then
+                firetouchinterest(ball,part,0)
+                task.wait()
+                firetouchinterest(ball,part,1)
+            end
+        end
+  --  end)
+end
+
+local previousPositions = {}
+
+-- Function to check if another character is moving directly towards me
+local function isMovingDirectlyTowardsMe(otherCharacter)
+    if not otherCharacter or not game.Players.LocalPlayer.Character then return false end
+
+    local myPosition = game.Players.LocalPlayer.Character.HumanoidRootPart.Position
+    local otherPosition = otherCharacter.PrimaryPart.Position
+
+    -- Get the previous position
+    local previousPosition = previousPositions[otherCharacter] or otherPosition
+
+    -- Calculate the direction vector to the local player
+    local directionToMe = (myPosition - otherPosition).unit
+
+    -- Calculate the movement direction based on the previous and current position
+    local movementDirection = (otherPosition - previousPosition).unit
+
+    -- Update the previous position
+    previousPositions[otherCharacter] = otherPosition
+
+    -- Calculate the dot product to check if they are moving towards me
+    local dotProduct = directionToMe:Dot(movementDirection)
+
+    -- Return true if the dot product is greater than a threshold
+    return dotProduct
+end
+
+local function isCharacterLookingAtPlayer(character, player)
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return false end
+
+    local playerPosition = player.Position
+
+    local characterPosition = humanoidRootPart.Position
+    local characterForward = humanoidRootPart.CFrame.LookVector
+
+    -- Calculate the direction from the character to the player
+    local directionToPlayer = (playerPosition - characterPosition).unit
+
+    -- Calculate the dot product
+    local dotProduct = characterForward:Dot(directionToPlayer)
+    -- Check if the dot product indicates the character is looking in the player's direction
+    return dotProduct
+end
+
+local steptackle={
+    "rbxassetid://13655839029",
+    "rbxassetid://18583860381",
+    "rbxassetid://125071502016389",
+    "rbxassetid://13655839029",
+}
+
+local slidetackle={
+    "rbxassetid://18534564434",
+    "rbxassetid://16102450997",
+}
+
+local holdkick={
+    "rbxassetid://18534246749",
+    "rbxassetid://17109676406",
+    "rbxassetid://16111897168"
+}
+
+local iceground={
+    "rbxassetid://18220817654",
+}
+
+local ignitedsteal={
+    "rbxassetid://88839956246094",
+}
+
+local killerslide={
+    "rbxassetid://17122464963",
+}
+
+local spiraldraw={
+    "rbxassetid://17069423384",
+}
+
+
+
+function dribble()
+    if game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("LiftCooldown") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("DribbleCooldown") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("FeintCooldown") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Skill") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("ChargingKick") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("FeintCooldown") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Skill") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("FeintCooldown") and not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("KickCooldown") then
+        local args = {
+            [1] = {
+                [1] = "Hold Kick"
+            }
+        }
+        
+        game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Shooting"):FireServer(unpack(args))
+    end
+    local args = {
+        [1] = CFrame.new(-17624.666015625, 793.785888671875, 250.88763427734375, -0.8422284126281738, 1.3006799193249208e-08, -0.5391208529472351, -8.255909844656628e-11, 1, 2.4254919850363876e-08, 0.5391208529472351, 2.0472691986128666e-08, -0.8422284126281738)
+    }
+    game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Dribble"):FireServer(unpack(args))
+end
+
+function check(Defender)
+    local anyTrue = false
+
+    if Defender.Character.InstanceValue:FindFirstChild("Skill") then
+        local Skill = Defender.Character.InstanceValue:FindFirstChild("Skill").Value
+        
+        -- Check if Skill matches any of the specified values
+        if Skill == "Speed Burst" or 
+           Skill == "Explosive Speed" or 
+           Skill == "Explosive Acceleration" or 
+           Skill == "Flurry Dash" or 
+           Skill == "Hunters Net" or 
+           Skill == "Replenish" or 
+           Skill == "Blackhole Trap" or 
+           Skill == "Ice Ground" or 
+           Skill == "Ignited Steal" or 
+           Skill == "Einstaz" or
+           Skill == "Mega Quake" or
+           Skill == "Photon Flash" or
+           Skill == "Shadow Minion" or
+           Skill == "Spiral Draw" then
+            anyTrue = true
+        end
+
+    end
+
+    return anyTrue
+end
+--local cameraPos
+local based = 0
+local runLoop
+local secondloop
+runLoop = game:GetService("RunService").RenderStepped:Connect(function(deltaTime)
+    if game:GetService("Players").LocalPlayer.Character.PlayerInfo.Stamina.Value < 1 then
+        game:GetService("Players").LocalPlayer.Character.PlayerInfo.Stamina.Value = 1
+    end
+    game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Size = Vector3.new(11,2,11)
+    if game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("SlideTackle") or game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Skill") or game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Possession") then
+        game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Size = Vector3.new(2,2,1)
+    end
+
+
+    if game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Possession") and iframe==false then
+        pcall(function()
+            for i,v in next, game.Players:GetChildren() do
+                if v and v.Character and v~=game.Players.LocalPlayer and v.Team~=game.Players.LocalPlayer.Team and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("HumanoidRootPart") and v.Character:FindFirstChildOfClass("Humanoid") and v.Character:FindFirstChildOfClass("Humanoid").Health>0 and (not v.Character.InstanceValue:FindFirstChild("Knocked") and not v.Character.InstanceValue:FindFirstChild("Stunned")) then
+                    local Defender = v
+                    
+                    local MyDistance = (XZ(game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Position) - XZ(Defender.Character.HumanoidRootPart.Position)).Magnitude
+                    
+                    local dotProduct = isCharacterLookingAtPlayer(Defender.Character, game:GetService("Players").LocalPlayer.Character.HumanoidRootPart)
+
+                
+                    local UniversaldotProduct = 0.95
+
+                    if MyDistance<=8 then
+                        UniversaldotProduct=-0.3
+                    elseif MyDistance<=12.5 then
+                        UniversaldotProduct=-0.15
+                    elseif MyDistance<=20 then
+                        UniversaldotProduct=0.9
+                    end
+
+                   
+                    if (Defender.Character.InstanceValue:FindFirstChild("SlideTackle") and Defender.Character.HumanoidRootPart.Velocity.Y<=1) and (MyDistance <= 17.5 and (dotProduct>=UniversaldotProduct)) then
+                        dribble()
+                    end
+
+                    if Defender.Character.InstanceValue:FindFirstChild("Skill") then
+                        local Skill = Defender.Character.InstanceValue:FindFirstChild("Skill").Value
+
+                        if #Skill>0 then
+                            if Skill == "Ice Ground" then
+                                if MyDistance <= 35 then
+                                    delay(0.2, function()
+                                        if iframe==false then
+                                            dribble()
+                                        end
+                                    end)
+                                end
+                            elseif Skill == "Ignited Steal" then
+                                if (MyDistance <= 19 and dotProduct>=0) or (MyDistance <= 30 and Defender.Character.HumanoidRootPart.Velocity.Y<=1 and (dotProduct>=UniversaldotProduct)) then
+                                    dribble()
+                                end
+                            elseif Skill == "Killer Slide" then
+                                if MyDistance<= 14 and (dotProduct>=UniversaldotProduct) then
+                                    dribble()
+                                end
+                            elseif Skill == "Spiral Draw" then
+                                if MyDistance <= 20 then
+                                    dribble()
+                                end
+                            elseif Skill == "Einstaz" then
+                                if (MyDistance <= 20 and (dotProduct>=UniversaldotProduct)) then
+                                    dribble()
+                                end
+                            elseif Skill == "Mega Quake" then
+                                if MyDistance <= 35 then
+                                    delay(0.75, function()
+                                        if iframe==false then
+                                            dribble()
+                                        end
+                                    end)
+                                end
+                            elseif MyDistance <= 20 then
+                                if not check(Defender) then
+                                    dribble()
+                                end
+                            end 
+                        end
+
+                    end
+             
+                    if (Defender.Character.InstanceValue:FindFirstChild("ChargingKick") or Defender.Character.InstanceValue:FindFirstChild("Kick")) and (MyDistance <= 11.5 and dotProduct>=-0.25) then
+                     
+                       dribble()
+                    end
+                    
+                end
+            end
+        end)
+    end
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+local NagiCamera = false
+    if NagiCamera then
+
+    if game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Possession") and hold then
+        local camera = workspace.CurrentCamera
+        local virtualshit = game:GetService("VirtualInputManager")
+        local cameraframe = camera.CFrame
+        local look = cameraframe.LookVector
+        local up = Vector3.new(0, 10, 0)
+        local look2 = (look + up).unit
+
+        camera.CFrame = CFrame.new(cameraframe.Position, cameraframe.Position + look2)
+    end
+end
+end)
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+secondloop = game:GetService("RunService").Heartbeat:Connect(function()
+    wait(0.1)
+    if dribbleball() then
+        local jall = dribbleball() 
+        if not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Possession") then
+            local ballDistance = (jall.Position - game.Players.LocalPlayer.Character.Head.Position).Magnitude
+            --local HeightDiff = math.abs(jall.Position.Y - game.Players.LocalPlayer.Character.Head.Position.Y)
+            if math.abs(game.Players.LocalPlayer.Character.Head.Velocity.Y)>1 and math.abs(jall.Velocity.Y)>1 and ballDistance<=35 then
+                game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 50
+                MoveTo(jall.Position+jall.Velocity*0.1)
+            end
+        end
+    end
+    pcall(function()
+        game:GetService("Players").LocalPlayer.PlayerScripts.VFX.VFX["Shadow Minion"].ScreenGui.Frame.Visible = false
+        game:GetService("Players").LocalPlayer.PlayerScripts.VFX.VFX["Photon Flash"].ScreenGui.Frame.Visible = false
+    end)
+
+end)
+
+game.UserInputService.InputBegan:connect(function(input)
+	if input.KeyCode == Enum.KeyCode.End then
+		pcall(function()
+            game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Size = Vector3.new(2,2,1)
+            game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid").AutoRotate = true
+			if runLoop then
+				runLoop:Disconnect()
+                secondloop:Disconnect()
+			end
+            game:GetService("Players").LocalPlayer.PlayerScripts.VFX.VFX["Shadow Minion"].ScreenGui.Frame.Visible = true
+            game:GetService("Players").LocalPlayer.PlayerScripts.VFX.VFX["Photon Flash"].ScreenGui.Frame.Visible = true
+		end)
+	end
+end)
+
+game.UserInputService.InputBegan:connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Eight then
+        hold=true
+    end
+end)
+
+game.UserInputService.InputEnded:connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Eight then
+        hold=false
+    end
+end)

@@ -35,7 +35,7 @@ local function updateCollider(ball)
     collide2.Color = Color3.new(117 / 255, 0, 0)
     collide2.Material = Enum.Material.ForceField
     collide2.Reflectance = 0
-    collide2.Transparency = 0
+    collide2.Transparency = 1
     collide2.CanCollide = false
     collide2.CanQuery = false
     collide2.CanTouch = false

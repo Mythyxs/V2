@@ -11,7 +11,7 @@ runLoop = game:GetService("RunService").RenderStepped:Connect(function(deltaTime
        --game:GetService("Players").LocalPlayer.Character.PlayerInfo.Stamina.Value = 2
     --end
     game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Size = Vector3.new(10,2,10)
-    if game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("SlideTackle") or game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Skill") or game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Possession") then
+    if game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Dive") or game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Skill") or game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Possession") then
         game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Size = Vector3.new(2,2,1)
     end
 ------------------------------------------------------------------------------------------------------------------------------------
@@ -257,30 +257,6 @@ end
         print(isCharacterLookingAtPlayer(Defender().Character, game:GetService("Players").LocalPlayer))
     end
     ]]--
-
-        pcall(function()
-        if game.PlaceId == 130976392556634 then
-            local args = {
-                [1] = {
-                    [1] = "Blue",
-                    [2] = "FW"
-                }
-            }
-            if game.Players.LocalPlayer.Team == nil then
-                game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("MatchInfo"):FireServer(unpack(args))
-            end
-
-            args = {
-                [1] = {
-                    [1] = "Red",
-                    [2] = "FW"
-                }
-            }
-            if game.Players.LocalPlayer.Team == nil then
-                game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("MatchInfo"):FireServer(unpack(args))
-            end
-        end
-    end)
 
     if activate == true then
         if ball() then

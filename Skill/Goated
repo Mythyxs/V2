@@ -175,6 +175,219 @@ spawn(AntiPhotonFlash)
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
+-- AutoGK Feature
+local function AutoGK()
+    local VirtualInputManager = Instance.new('VirtualInputManager')
+    local players = game.Players
+    local replicated = game.ReplicatedStorage
+
+    local player = players.LocalPlayer
+    local char = player.Character or player.CharacterAdded:Wait()
+
+    local goals = {}
+
+    -- Collect all goal markers (Aimers)
+    do
+        local allDescendants = workspace:GetDescendants()
+        for _, obj in ipairs(allDescendants) do
+            if obj:IsA("UnionOperation") and obj.Name == "Aimer" then
+                table.insert(goals, obj)
+            end
+        end
+    end
+
+    player.CharacterAdded:Connect(function(CHAR)
+        char = CHAR
+    end)
+
+    -- Find the closest goal
+    local function Goal()
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+
+        local distances = {}
+        for _, g in pairs(goals) do
+            table.insert(distances, (root.Position - g.Position).Magnitude)
+        end
+
+        local closestGoalDistance = math.min(unpack(distances))
+        for _, g in pairs(goals) do
+            if (root.Position - g.Position).Magnitude == closestGoalDistance then
+                return g
+            end
+        end
+    end
+
+    -- Move the character
+    local function MoveTo(position)
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid:MoveTo(position)
+        end
+    end
+
+    -- Find the closest ball
+    local function ball()
+        local nearestBall = nil
+        local shortestDistance = math.huge
+
+        local messiFolder = workspace:FindFirstChild("Messi")
+        if not messiFolder then return nil end
+
+        for _, obj in pairs(messiFolder:GetChildren()) do
+            local football = obj:FindFirstChild("HumanoidRootPart")
+            if football then
+                local ballDistance = (player.Character.HumanoidRootPart.Position - football.Position).Magnitude
+                if ballDistance < shortestDistance then
+                    shortestDistance = ballDistance
+                    nearestBall = football
+                end
+            end
+        end
+
+        return nearestBall
+    end
+
+    -- Calculate ball direction using dot product
+    local function ballDirection()
+        local target = ball()
+        if not target then return nil end
+
+        local playerPosition = char.HumanoidRootPart.Position
+        local ballPredicted = target.Position + (target.Velocity * 0.3)
+        local relativeBallPosition = ballPredicted - playerPosition
+        local rightVector = char.HumanoidRootPart.CFrame.RightVector
+        local dotProduct = relativeBallPosition:Dot(rightVector)
+
+        -- Determine direction
+        if dotProduct > 0 then
+            return "Right"
+        elseif dotProduct < 0 then
+            return "Left"
+        else
+            return "Forward"
+        end
+    end
+
+    -- Adjust sideways position based on goal and ball
+    local function sidewaysposition()
+        local g = Goal()
+        local ballTarget = ball()
+        if not g or not ballTarget then return end
+
+        local offset = 17
+        local goalPosition = g.Position
+        local goalLookVector = g.CFrame.LookVector
+
+        if math.abs(goalLookVector.X) > math.abs(goalLookVector.Z) then
+            offset = goalLookVector.X > 0 and -offset or offset
+            return Vector3.new(goalPosition.X + offset, 0, ballTarget.Position.Z)
+        else
+            offset = goalLookVector.Z > 0 and -offset or offset
+            return Vector3.new(ballTarget.Position.X, 0, goalPosition.Z + offset)
+        end
+    end
+
+    -- Script state
+    local scriptActive = true
+    local allConnections = {}
+
+    -- Main logic for diving
+    local function onRenderStepped()
+        if not scriptActive then return end
+        pcall(function()
+            local targetBall = ball()
+            if not targetBall then return end
+
+            -- Check if any player within 75 studs is playing the specific animation
+            local isAnimationPlayingNearby = false
+            for _, otherPlayer in pairs(players:GetPlayers()) do
+                if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") and otherPlayer.Team ~= player.Team then
+                    local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+                    local otherAnimator = otherHumanoid and otherHumanoid:FindFirstChildOfClass("Animator")
+                    if otherAnimator then
+                        for _, track in ipairs(otherAnimator:GetPlayingAnimationTracks()) do
+                            if track.Animation.AnimationId == "rbxassetid://13655839029" then
+                                local distanceToOther = (char.HumanoidRootPart.Position - otherPlayer.Character.HumanoidRootPart.Position).Magnitude
+                                if distanceToOther <= math.huge then
+                                    local ballInstanceValue = targetBall:FindFirstChild("InstanceValue")
+                                    if ballInstanceValue and ballInstanceValue:FindFirstChild("LastTouched") and ballInstanceValue.LastTouched.Value == otherPlayer then
+                                        return true
+                                    end
+                                    isAnimationPlayingNearby = true
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
+                if isAnimationPlayingNearby then break end
+            end
+
+            -- Dive logic
+            local ballDistance = (char.HumanoidRootPart.Position - targetBall.Position).Magnitude
+            local direction = ballDirection()
+
+            if direction and isAnimationPlayingNearby and ballDistance <= 35 then
+                -- Check if ball is above head height
+                if targetBall.Position.Y > char.Head.Position.Y + 7 then
+                    -- Press space to jump
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                    task.wait(0.01)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+                end
+                
+                local args = {
+                    [1] = {
+                        [1] = direction,
+                        [2] = char.HumanoidRootPart.CFrame
+                    }
+                }
+                replicated:WaitForChild("Remotes"):WaitForChild("Dive"):FireServer(unpack(args))
+                
+            end
+        end)
+    end
+
+    -- Connect diving logic to RenderStepped and store the connection
+    local steppedConnection = game:GetService("RunService").RenderStepped:Connect(onRenderStepped)
+    table.insert(allConnections, steppedConnection)
+
+    -- Keybinds for toggling script behavior
+    local inputConnection = game.UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.ButtonR1 then
+            scriptActive = not scriptActive
+            if scriptActive then
+                print("Script Enabled")
+            else
+                print("Script Disabled")
+            end
+        elseif input.KeyCode == Enum.KeyCode.End then
+            -- Terminate script completely
+            scriptActive = false
+            for _, conn in ipairs(allConnections) do
+                conn:Disconnect()
+            end
+            table.clear(allConnections)
+            print("Script terminated and all functionalities removed.")
+        end
+    end)
+    table.insert(allConnections, inputConnection)
+
+    local mConnection = game.UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.M then
+            if char and char:FindFirstChild("Head") then
+                local realHeadHeight = char.Head.Position.Y
+            end
+        end
+    end)
+    table.insert(allConnections, mConnection)
+end
+
+spawn(AutoGK)
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 -- Main loop to periodically update stamina, existing balls, and check for "LeaveAVouch"
 while true do
     -- Update stamina based on possession

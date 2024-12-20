@@ -317,9 +317,9 @@ local function AutoGK()
 
         local speed = XZ(target.Velocity).Magnitude
         --print(speed)
-        local dotMin = 0.05
+        local dotMin = 0.45
 
-        if balldistance<=70 or speed >= 135 then
+        if balldistance<=80 or speed >= 135 then
             if dot > dotMin then
                 return "Right", FinalVelocity, FinalPosition, target.Position+FinalAcceleration
             elseif dot < -dotMin then
@@ -331,12 +331,11 @@ local function AutoGK()
 
     local scripton = true
     local everything = {}
-
     local function render()
         if not scripton then return end
 
         local targetball = ball()
-        if not targetball then return end
+        if not targetball then char.PlayerInfo.SpeedMultiplier.Value = 0 return end
         local balldistance = (char.HumanoidRootPart.Position - targetball.Position).Magnitude
         local direction, FinalVelocity, FinalPosition, FinalPosAccel = ballDirection()
 
@@ -362,8 +361,10 @@ local function AutoGK()
                 end
                 ]]--
             end
-            game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 50
+            char.PlayerInfo.SpeedMultiplier.Value = 10
             char.Humanoid:MoveTo(FinalPosAccel)
+        else
+            char.PlayerInfo.SpeedMultiplier.Value = 0
         end
         lastVelocity=FinalVelocity
     end
@@ -372,7 +373,7 @@ local function AutoGK()
     table.insert(everything, steppedconnect)
 
     local inputconnect = game.UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.ButtonR1 then
+        if input.KeyCode == Enum.KeyCode.Eight then
             scripton = not scripton
             if scripton then
                 game.StarterGui:SetCore("SendNotification", {

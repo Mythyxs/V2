@@ -23,7 +23,7 @@ local function updateCollider(ball)
 
     -- Check if "LeaveAVouch" is in the game
     if isPlayerInGame("pr4ylow") then
-        regularCollider.Size = Vector3.new(8, 8, 8) -- Size for LeaveAVouch presence
+        regularCollider.Size = Vector3.new(6, 6, 6) -- Size for LeaveAVouch presence
     else
         regularCollider.Size = Vector3.new(15, 15, 15) -- Default size
     end
@@ -290,7 +290,7 @@ local function AutoGK()
     local function ballDirection()
         local target = ball()
         if not target then return nil end
-        target.Parent.Collider.Size = Vector3.new(8,8,8)
+        target.Parent.Collider.Size = Vector3.new(6,6,6)
 
         local FinalPosition, FinalVelocity, FinalAcceleration = Test(target.Velocity, target.Position)
 

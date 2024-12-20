@@ -35,7 +35,7 @@ local function updateCollider(ball)
     collide2.Color = Color3.new(117 / 255, 0, 0)
     collide2.Material = Enum.Material.ForceField
     collide2.Reflectance = 0
-    collide2.Transparency = 0.5
+    collide2.Transparency = 1
     collide2.CanCollide = false
     collide2.CanQuery = false
     collide2.CanTouch = false
@@ -175,220 +175,237 @@ spawn(AntiPhotonFlash)
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
--- AutoGK Feature
-local AutoGKEnabled = false
+local function AutoGK()
+    local VirtualInputManager = Instance.new('VirtualInputManager')
+    local players = game.Players
+    local replicated = game.ReplicatedStorage
+    local player = players.LocalPlayer
+    local char = player.Character or player.CharacterAdded:Wait()
 
-if AutoGKEnabled then
-    local function AutoGK()
-        local VirtualInputManager = Instance.new('VirtualInputManager')
-        local players = game.Players
-        local replicated = game.ReplicatedStorage
+    local goals = {}
 
-        local player = players.LocalPlayer
-        local char = player.Character or player.CharacterAdded:Wait()
+    do
+        local a = workspace:GetDescendants()
 
-        local goals = {}
-
-        -- Collect all goal markers (Aimers)
-        do
-            local allDescendants = workspace:GetDescendants()
-            for _, obj in ipairs(allDescendants) do
-                if obj:IsA("UnionOperation") and obj.Name == "Aimer" then
-                    table.insert(goals, obj)
-                end
+        for x = 1, #a do
+            if (a[x]:IsA("Part") and a[x].Name == "COLLIDABLE") then
+                table.insert(goals, a[x])
             end
         end
-
-        player.CharacterAdded:Connect(function(CHAR)
-            char = CHAR
-        end)
-
-        -- Find the closest goal
-        local function Goal()
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if not root then return end
-
-            local distances = {}
-            for _, g in pairs(goals) do
-                table.insert(distances, (root.Position - g.Position).Magnitude)
-            end
-
-            local closestGoalDistance = math.min(unpack(distances))
-            for _, g in pairs(goals) do
-                if (root.Position - g.Position).Magnitude == closestGoalDistance then
-                    return g
-                end
-            end
-        end
-
-        -- Move the character
-        local function MoveTo(position)
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                humanoid:MoveTo(position)
-            end
-        end
-
-        -- Find the closest ball
-        local function ball()
-            local nearestBall = nil
-            local shortestDistance = math.huge
-
-            local messiFolder = workspace:FindFirstChild("Messi")
-            if not messiFolder then return nil end
-
-            for _, obj in pairs(messiFolder:GetChildren()) do
-                local football = obj:FindFirstChild("HumanoidRootPart")
-                if football then
-                    local ballDistance = (player.Character.HumanoidRootPart.Position - football.Position).Magnitude
-                    if ballDistance < shortestDistance then
-                        shortestDistance = ballDistance
-                        nearestBall = football
-                    end
-                end
-            end
-
-            return nearestBall
-        end
-
-        -- Calculate ball direction using dot product
-        local function ballDirection()
-            local target = ball()
-            if not target then return nil end
-
-            local playerPosition = char.HumanoidRootPart.Position
-            local ballPredicted = target.Position + (target.Velocity * 0.3)
-            local relativeBallPosition = ballPredicted - playerPosition
-            local rightVector = char.HumanoidRootPart.CFrame.RightVector
-            local dotProduct = relativeBallPosition:Dot(rightVector)
-
-            -- Determine direction
-            if dotProduct > 0 then
-                return "Right"
-            elseif dotProduct < 0 then
-                return "Left"
-            else
-                return "Forward"
-            end
-        end
-
-        -- Adjust sideways position based on goal and ball
-        local function sidewaysposition()
-            local g = Goal()
-            local ballTarget = ball()
-            if not g or not ballTarget then return end
-
-            local offset = 17
-            local goalPosition = g.Position
-            local goalLookVector = g.CFrame.LookVector
-
-            if math.abs(goalLookVector.X) > math.abs(goalLookVector.Z) then
-                offset = goalLookVector.X > 0 and -offset or offset
-                return Vector3.new(goalPosition.X + offset, 0, ballTarget.Position.Z)
-            else
-                offset = goalLookVector.Z > 0 and -offset or offset
-                return Vector3.new(ballTarget.Position.X, 0, goalPosition.Z + offset)
-            end
-        end
-
-        -- Script state
-        local scriptActive = true
-        local allConnections = {}
-
-        -- Main logic for diving
-        local function onRenderStepped()
-            if not scriptActive then return end
-            pcall(function()
-                local targetBall = ball()
-                if not targetBall then return end
-
-                -- Check if any player within 75 studs is playing the specific animation
-                local isAnimationPlayingNearby = false
-                for _, otherPlayer in pairs(players:GetPlayers()) do
-                    if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") and otherPlayer.Team ~= player.Team then
-                        local otherHumanoid = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
-                        local otherAnimator = otherHumanoid and otherHumanoid:FindFirstChildOfClass("Animator")
-                        if otherAnimator then
-                            for _, track in ipairs(otherAnimator:GetPlayingAnimationTracks()) do
-                                if track.Animation.AnimationId == "rbxassetid://13655839029" then
-                                    local distanceToOther = (char.HumanoidRootPart.Position - otherPlayer.Character.HumanoidRootPart.Position).Magnitude
-                                    if distanceToOther <= math.huge then
-                                        local ballInstanceValue = targetBall:FindFirstChild("InstanceValue")
-                                        if ballInstanceValue and ballInstanceValue:FindFirstChild("LastTouched") and ballInstanceValue.LastTouched.Value == otherPlayer then
-                                            return true
-                                        end
-                                        isAnimationPlayingNearby = true
-                                        break
-                                    end
-                                end
-                            end
-                        end
-                    end
-                    if isAnimationPlayingNearby then break end
-                end
-
-                -- Dive logic
-                local ballDistance = (char.HumanoidRootPart.Position - targetBall.Position).Magnitude
-                local direction = ballDirection()
-
-                if direction and isAnimationPlayingNearby and ballDistance <= 35 then
-                    -- Check if ball is above head height
-                    if targetBall.Position.Y > char.Head.Position.Y + 7 then
-                        -- Press space to jump
-                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
-                        task.wait(0.01)
-                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
-                    end
-                    
-                    local args = {
-                        [1] = {
-                            [1] = direction,
-                            [2] = char.HumanoidRootPart.CFrame
-                        }
-                    }
-                    replicated:WaitForChild("Remotes"):WaitForChild("Dive"):FireServer(unpack(args))
-                    
-                end
-            end)
-        end
-
-        -- Connect diving logic to RenderStepped and store the connection
-        local steppedConnection = game:GetService("RunService").RenderStepped:Connect(onRenderStepped)
-        table.insert(allConnections, steppedConnection)
-
-        -- Keybinds for toggling script behavior
-        local inputConnection = game.UserInputService.InputBegan:Connect(function(input)
-            if input.KeyCode == Enum.KeyCode.ButtonR1 then
-                scriptActive = not scriptActive
-                if scriptActive then
-                    print("Script Enabled")
-                else
-                    print("Script Disabled")
-                end
-            elseif input.KeyCode == Enum.KeyCode.End then
-                -- Terminate script completely
-                scriptActive = false
-                for _, conn in ipairs(allConnections) do
-                    conn:Disconnect()
-                end
-                table.clear(allConnections)
-                print("Script terminated and all functionalities removed.")
-            end
-        end)
-        table.insert(allConnections, inputConnection)
-
-        local mConnection = game.UserInputService.InputBegan:Connect(function(input)
-            if input.KeyCode == Enum.KeyCode.M then
-                if char and char:FindFirstChild("Head") then
-                    local realHeadHeight = char.Head.Position.Y
-                end
-            end
-        end)
-        table.insert(allConnections, mConnection)
     end
 
-    spawn(AutoGK)
+    local function Goal()
+
+        local root = game.Players.LocalPlayer.Character.HumanoidRootPart
+        local D = {}
+    
+        for _, goal in pairs(goals) do
+            table.insert(D, (root.Position - goal.Position).magnitude)
+        end
+    
+        local closegoal = math.min(unpack(D))
+    
+        for _, goal in pairs(goals) do
+            local d = (root.Position - goal.Position).magnitude
+    
+    
+            if (d == closegoal) then
+                return goal
+            end
+        end
+    end
+    
+
+    local function ball()
+        local nearestball = nil
+        local shortestDistance = math.huge
+        
+
+        local messiFolder = workspace:FindFirstChild("Messi")
+        if not messiFolder then return nil end
+
+        for _, obj in pairs(messiFolder:GetChildren()) do
+            local football = obj:FindFirstChild("HumanoidRootPart")
+
+            local currentVelocity = (football.Velocity).unit
+            local directionToOther = (football.Position - Goal().Position).unit
+
+            local isVelocityPointingAway = currentVelocity:Dot(directionToOther)
+            if football and not obj.InstanceValue:FindFirstChild("Possession") and isVelocityPointingAway<=-0.7 then
+                local balldistance = (player.Character.HumanoidRootPart.Position - football.Position).Magnitude
+                if balldistance < shortestDistance then
+                    shortestDistance = balldistance
+                    nearestball = football
+                end
+            end
+        end
+        return nearestball
+    end
+
+    local function XZ(V)
+        return Vector3.new(V.X, 0, V.Z)
+    end
+
+    local part = Instance.new("Part")
+    part.Size = Vector3.new(2, 2, 2)
+    part.Shape = Enum.PartType.Ball
+    part.Anchored = true
+    part.Parent = workspace
+    part.Transparency = 0.5
+    part.Material = Enum.Material.Neon
+    part.CanCollide=false
+
+    local part2 = Instance.new("Part")
+    part2.Size = Vector3.new(2, 2, 2)
+    part2.Shape = Enum.PartType.Ball
+    part2.Anchored = true
+    part2.Parent = workspace
+    part2.Transparency = 0.5
+    part2.Material = Enum.Material.Neon
+    part2.Color = Color3.new(0.5,0,0)
+    part2.CanCollide=false
+
+
+    local function LANDINGPOS(velocity, position,multipler)
+        local acceleration = -workspace.Gravity
+        local timeToLand = (-velocity.y - math.sqrt(velocity.y * velocity.y - 4 * 0.5 * acceleration * position.y)) / (2 * 0.5 * acceleration)
+        local horizontalVelocity = Vector3.new(velocity.x, 0, velocity.z)
+        local landingPosition = position + horizontalVelocity * timeToLand + Vector3.new(0, -position.y, 0)
+        return landingPosition, horizontalVelocity * timeToLand
+    end    
+
+    local lastVelocity = Vector3.new(0,0,0)
+
+    local function Test(velocity, position)
+        local distance = (XZ(char.HumanoidRootPart.Position-position)).Magnitude
+        local horizontalVelocity = (Vector3.new(velocity.x, 0, velocity.z)).unit
+        local speed = horizontalVelocity.Magnitude
+        local t = distance/speed
+        local landingPosition = position + (velocity).unit*t
+        local acceleration = (horizontalVelocity*t-lastVelocity).unit
+        return landingPosition, horizontalVelocity*t, acceleration*t
+    end    
+
+    local lastVelocity = Vector3.new(0,0,0)
+    local function ballDirection()
+        local target = ball()
+        if not target then return nil end
+        target.Parent.Collider.Size = Vector3.new(30,30,30)
+
+        local FinalPosition, FinalVelocity, FinalAcceleration = Test(target.Velocity, target.Position)
+
+        local playerpos = char.HumanoidRootPart.Position
+        local ballpredict = FinalPosition
+        local acceleration = (FinalVelocity-lastVelocity)
+
+        local relativeballpos = (ballpredict - playerpos).unit
+        local rightvec = char.HumanoidRootPart.CFrame.RightVector
+        local dot = relativeballpos:Dot(rightvec)
+
+        part2.Position = target.Position+FinalAcceleration
+        part.Position = FinalPosition
+
+        local balldistance = (FinalPosition-target.Position+FinalAcceleration).Magnitude
+        --print(balldistance) 
+        --print((FinalVelocity-lastVelocity).Magnitude)
+        --[[
+        local FinalPosition2 = target.Position+target.Velocity
+
+        local relativeballpos2 = (FinalPosition2 - playerpos).unit
+        local dot2 = relativeballpos2:Dot(rightvec)
+        ]]--
+
+        local speed = XZ(target.Velocity).Magnitude
+        --print(speed)
+        local dotMin = 0.05
+
+        if balldistance<=55 or speed >= 135 then
+            if dot > dotMin then
+                return "Right", FinalVelocity, FinalPosition, target.Position+FinalAcceleration
+            elseif dot < -dotMin then
+                return "Left", FinalVelocity, FinalPosition, target.Position+FinalAcceleration
+            end
+        end
+        return "Forward", FinalVelocity, FinalPosition, target.Position+FinalAcceleration
+    end
+
+    local scripton = true
+    local everything = {}
+
+    local function render()
+        if not scripton then return end
+
+        local targetball = ball()
+        if not targetball then return end
+        local balldistance = (char.HumanoidRootPart.Position - targetball.Position).Magnitude
+        local direction, FinalVelocity, FinalPosition, FinalPosAccel = ballDirection()
+
+        local FastEnough = targetball.Velocity.Magnitude>=60
+        
+        if direction and balldistance <= 60 then
+            local args = {
+                [1] = {
+                    [1] = direction,
+                    [2] = char.HumanoidRootPart.CFrame
+                }
+            }
+            if FastEnough then
+                if direction~="Forward" then
+                    replicated:WaitForChild("Remotes"):WaitForChild("Dive"):FireServer(unpack(args))
+                end
+                --[[
+                if FinalPosition.Y > char.Head.Position.Y+25 then
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                    delay(0.1, function()
+                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+                    end)
+                end
+                ]]--
+            end
+            char.Humanoid:MoveTo(FinalPosAccel)
+        end
+        lastVelocity=FinalVelocity
+    end
+
+    local steppedconnect = game:GetService("RunService").RenderStepped:Connect(render)
+    table.insert(everything, steppedconnect)
+
+    local inputconnect = game.UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.ButtonR1 then
+            scripton = not scripton
+            if scripton then
+                game.StarterGui:SetCore("SendNotification", {
+                    Title = "Skillful: On";
+                    Text = "On"; 
+                    Duration = 0.05;
+                })
+            else
+                game.StarterGui:SetCore("SendNotification", {
+                    Title = "Skillful: Off";
+                    Text = "Off"; 
+                    Duration = 0.05;
+                })
+            end
+        elseif input.KeyCode == Enum.KeyCode.End then
+            scripton = false
+            if part then
+                part:Destroy()
+                part2:Destroy()
+            end
+            for _, conn in ipairs(everything) do
+                conn:Disconnect()
+            end
+            table.clear(everything)
+            
+        end
+    end)
+    table.insert(everything, inputconnect)
+
+ 
+    table.insert(everything, mConnection)
 end
+
+spawn(AutoGK)
 
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

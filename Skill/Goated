@@ -251,7 +251,7 @@ local function AutoGK()
     part.Shape = Enum.PartType.Ball
     part.Anchored = true
     part.Parent = workspace
-    part.Transparency = 0.5
+    part.Transparency = 1
     part.Material = Enum.Material.Neon
     part.CanCollide=false
 

@@ -95,14 +95,14 @@ local function updateStamina()
     local playerInfo = workspace.Players[localPlayer.Name].PlayerInfo
 
     -- Ensure stamina does not go below 3
-    if playerInfo.Stamina.Value < 5 then
-        playerInfo.Stamina.Value = 7
+    if playerInfo.Stamina.Value < 0 then
+        playerInfo.Stamina.Value = 0
     end
 
     -- Update stamina based on possession
     if not hasPossession() then
         -- Set stamina to 100 when not in possession
-        playerInfo.Stamina.Value = 100
+        
     end
 end
 

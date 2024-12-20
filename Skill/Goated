@@ -23,7 +23,7 @@ local function updateCollider(ball)
 
     -- Check if "LeaveAVouch" is in the game
     if isPlayerInGame("pr4ylow") then
-        regularCollider.Size = Vector3.new(15, 15, 15) -- Size for LeaveAVouch presence
+        regularCollider.Size = Vector3.new(8, 8, 8) -- Size for LeaveAVouch presence
     else
         regularCollider.Size = Vector3.new(15, 15, 15) -- Default size
     end
@@ -260,7 +260,7 @@ local function AutoGK()
     part2.Shape = Enum.PartType.Ball
     part2.Anchored = true
     part2.Parent = workspace
-    part2.Transparency = 0.5
+    part2.Transparency = 1
     part2.Material = Enum.Material.Neon
     part2.Color = Color3.new(0.5,0,0)
     part2.CanCollide=false

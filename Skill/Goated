@@ -290,7 +290,7 @@ local function AutoGK()
     local function ballDirection()
         local target = ball()
         if not target then return nil end
-        target.Parent.Collider.Size = Vector3.new(30,30,30)
+        target.Parent.Collider.Size = Vector3.new(8,8,8)
 
         local FinalPosition, FinalVelocity, FinalAcceleration = Test(target.Velocity, target.Position)
 

@@ -175,6 +175,218 @@ spawn(AntiPhotonFlash)
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
+local FlowCheck = true 
+if FlowCheck then 
+    local workspace = game:GetService("Workspace")
+    local runService = game:GetService("RunService")
+    local userInputService = game:GetService("UserInputService")
+    local players = game:GetService("Players")
+
+    local playersFolder = workspace:WaitForChild("Players")
+    local running = true
+    local showBillboards = false
+
+    -- Function to create or update the Flow billboard above a player's head
+    local function createOrUpdateFlowBillboard(playerModel, flowValue)
+        local billboardGui = playerModel:FindFirstChild("FlowBillboardGui")
+
+        -- If the billboard doesn't exist, create it
+        if not billboardGui then
+            billboardGui = Instance.new("BillboardGui")
+            billboardGui.Name = "FlowBillboardGui"
+            billboardGui.Adornee = playerModel:WaitForChild("Head")
+            billboardGui.Size = UDim2.new(0, 100, 0, 10)
+            billboardGui.StudsOffset = Vector3.new(0, 5, 0) -- Slightly above head
+            billboardGui.AlwaysOnTop = true
+
+            -- Main background frame (white)
+            local backgroundFrame = Instance.new("Frame")
+            backgroundFrame.Name = "BackgroundFrame"
+            backgroundFrame.Size = UDim2.new(1, 0, 1, 0)
+            backgroundFrame.BackgroundColor3 = Color3.fromRGB(54, 57, 63) -- Discord dark theme background
+            backgroundFrame.BorderSizePixel = 0
+            backgroundFrame.Parent = billboardGui
+
+            -- Add rounded corners to background
+            local bgCorner = Instance.new("UICorner")
+            bgCorner.CornerRadius = UDim.new(0, 8)
+            bgCorner.Parent = backgroundFrame
+
+            -- Progress bar container
+            local progressContainer = Instance.new("Frame")
+            progressContainer.Name = "ProgressContainer"
+            progressContainer.Size = UDim2.new(0.7, 0, 0.8, 0)
+            progressContainer.Position = UDim2.new(0.05, 0, 0.1, 0)
+            progressContainer.BackgroundColor3 = Color3.fromRGB(47, 49, 54) -- Discord lighter dark for contrast
+            progressContainer.BorderSizePixel = 0
+            progressContainer.Parent = backgroundFrame
+
+            local containerCorner = Instance.new("UICorner")
+            containerCorner.CornerRadius = UDim.new(0, 8)
+            containerCorner.Parent = progressContainer
+
+            -- The fill frame for the progress bar
+            local fillFrame = Instance.new("Frame")
+            fillFrame.Name = "FillFrame"
+            fillFrame.Size = UDim2.new(0, 0, 1, 0)
+            fillFrame.Position = UDim2.new(0, 0, 0, 0)
+            fillFrame.BorderSizePixel = 0
+            fillFrame.Parent = progressContainer
+
+            local fillCorner = Instance.new("UICorner")
+            fillCorner.CornerRadius = UDim.new(0, 8)
+            fillCorner.Parent = fillFrame
+
+            -- Percentage label to the right
+            local percentageLabel = Instance.new("TextLabel")
+            percentageLabel.Name = "PercentageLabel"
+            percentageLabel.Size = UDim2.new(0.2, 0, 1, 0)
+            percentageLabel.Position = UDim2.new(0.77, 0, 0, 0)
+            percentageLabel.BackgroundTransparency = 1
+            percentageLabel.TextColor3 = Color3.new(1.000000, 1.000000, 1.000000)
+            percentageLabel.Font = Enum.Font.GothamSemibold
+            percentageLabel.TextScaled = true
+            percentageLabel.Text = "0%"
+            percentageLabel.Parent = backgroundFrame
+
+            billboardGui.Parent = playerModel
+        end
+
+        -- Update the billboard
+        local backgroundFrame = billboardGui:FindFirstChild("BackgroundFrame")
+        if backgroundFrame then
+            local progressContainer = backgroundFrame:FindFirstChild("ProgressContainer")
+                       local fillFrame = progressContainer and progressContainer:FindFirstChild("FillFrame")
+            local percentageLabel = backgroundFrame:FindFirstChild("PercentageLabel")
+
+            if fillFrame and percentageLabel then
+                local clampedFlow = math.clamp(flowValue, 0, 100)
+                local fillPercent = clampedFlow / 100
+                fillFrame.Size = UDim2.new(fillPercent, 0, 1, 0)
+                percentageLabel.Text = string.format("%d%%", math.floor(clampedFlow))
+
+                -- Check if the player has "Kasier Impact" or "Big Bang Drive" in their backpack or model
+                local player = players:GetPlayerFromCharacter(playerModel)
+                local hasKasierImpact = player and (
+                    (player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Kasier Impact")) or
+                    (workspace.Players:FindFirstChild(player.Name) and workspace.Players[player.Name]:FindFirstChild("Kasier Impact"))
+                )
+                local hasBigBangDrive = player and (
+                    (player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Big Bang Drive")) or
+                    (workspace.Players:FindFirstChild(player.Name) and workspace.Players[player.Name]:FindFirstChild("Big Bang Drive"))
+                )
+
+                -- Set fill color based on flow percentage and presence of "Kasier Impact" or "Big Bang Drive"
+                if clampedFlow == 100 then
+                    if hasKasierImpact then
+                        fillFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 139) -- Dark Blue
+                    elseif hasBigBangDrive then
+                        fillFrame.BackgroundColor3 = Color3.fromRGB(75, 0, 130) -- Dark Purple
+                    else
+                        fillFrame.BackgroundColor3 = Color3.new(0.407843, 0.101961, 0.113725) -- Dark Red
+                    end
+                elseif clampedFlow >= 80 then
+                    if hasKasierImpact then
+                        fillFrame.BackgroundColor3 = Color3.fromRGB(135, 206, 235) -- Sky Blue
+                    elseif hasBigBangDrive then
+                        fillFrame.BackgroundColor3 = Color3.fromRGB(148, 0, 211) -- Neon Purple
+                    else
+                        fillFrame.BackgroundColor3 = Color3.new(0.772549, 0.164706, 0.164706) -- Red
+                    end
+                elseif clampedFlow >= 50 then
+                    fillFrame.BackgroundColor3 = Color3.new(0.894118, 0.596078, 0.039216) -- Yellow
+                elseif clampedFlow <= 25 or 49 then
+                    fillFrame.BackgroundColor3 = Color3.new(0.074510, 0.741176, 0.074510) -- Green
+                else
+                    fillFrame.BackgroundColor3 = Color3.fromRGB(0, 170, 255) -- Default Blue
+                end
+            end
+        end
+    end
+
+    -- Function to destroy the Flow billboard if it exists
+    local function destroyFlowBillboard(playerModel)
+        local billboardGui = playerModel:FindFirstChild("FlowBillboardGui")
+        if billboardGui then
+            billboardGui:Destroy()
+        end
+    end
+
+    -- Update function run every frame
+    local function updateFlowBillboards()
+        if not running then return end
+        local localPlayer = players.LocalPlayer
+        local localPlayerCharacter = localPlayer and localPlayer.Character
+        local localPlayerHead = localPlayerCharacter and localPlayerCharacter:FindFirstChild("Head")
+        
+        if not localPlayerHead then return end
+
+        for _, playerModel in ipairs(playersFolder:GetChildren()) do
+            if playerModel:IsA("Model") and playerModel:FindFirstChild("Head") then
+                local playerInfo = playerModel:FindFirstChild("PlayerInfo")
+                if playerInfo then
+                    local flow = playerInfo:FindFirstChild("Flow")
+                    if flow and typeof(flow.Value) == "number" then
+                        local distance = (localPlayerHead.Position - playerModel.Head.Position).Magnitude
+                        if distance <= 250 then
+                            if showBillboards then
+                                createOrUpdateFlowBillboard(playerModel, flow.Value)
+                            else
+                                destroyFlowBillboard(playerModel)
+                            end
+                        else
+                            destroyFlowBillboard(playerModel)
+                        end
+                    else
+                        destroyFlowBillboard(playerModel)
+                    end
+                else
+                    destroyFlowBillboard(playerModel)
+                end
+            end
+        end
+    end
+
+    -- Termination function
+    local function terminateScript()
+        running = false
+        runService:UnbindFromRenderStep("UpdateFlowBillboards")
+        -- Destroy all billboards
+        for _, playerModel in ipairs(playersFolder:GetChildren()) do
+            destroyFlowBillboard(playerModel)
+        end
+    end
+
+    -- Key listener for END key
+    userInputService.InputEnded:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.End then
+            terminateScript()
+        end
+    end)
+
+    -- Key listener for SPACE key
+    userInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.ButtonL1 then
+            showBillboards = true
+        end
+    end)
+
+    userInputService.InputEnded:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.ButtonL1 then
+            showBillboards = false
+            -- Destroy all billboards when space is released
+            for _, playerModel in ipairs(playersFolder:GetChildren()) do
+                destroyFlowBillboard(playerModel)
+            end
+        end
+    end)
+
+    -- Start the update loop
+    runService:BindToRenderStep("UpdateFlowBillboards", Enum.RenderPriority.Last.Value, updateFlowBillboards)
+end
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
 local function AutoGK()
     local VirtualInputManager = Instance.new('VirtualInputManager')
     local players = game.Players

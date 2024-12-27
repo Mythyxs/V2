@@ -584,7 +584,7 @@ local function AutoGK()
     table.insert(everything, steppedconnect)
 
     local inputconnect = game.UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.LeftAlt then
+        if input.KeyCode == Enum.KeyCode.LeftAlt or input.UserInputType == Enum.UserInputType.ButtonR1 then
             scripton = not scripton
             if scripton then
                 game.StarterGui:SetCore("SendNotification", {

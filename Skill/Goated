@@ -673,7 +673,7 @@ local function AutoGK()
                 end
                 if Goal() then
                     local goal = Goal()
-                    followerPart.Position= Vector3.new(goal.Position.X,goal.Position.Y+7,goal.Position.Z)
+                    followerPart.Position= Vector3.new(goal.Position.X,goal.Position.Y+6,goal.Position.Z)
                     if FinalPosition.Y-15>followerPart.Position.Y then
                         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
                         delay(0.1, function()

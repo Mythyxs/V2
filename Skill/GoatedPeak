@@ -682,7 +682,7 @@ local function AutoGK()
                     end
                 end
             end
-            char.PlayerInfo.SpeedMultiplier.Value = 10
+            char.PlayerInfo.SpeedMultiplier.Value = 5
             char.Humanoid:MoveTo(sidewaysposition(FinalAccelerationPosition))
         else
             char.PlayerInfo.SpeedMultiplier.Value = 0
@@ -694,24 +694,8 @@ local function AutoGK()
     table.insert(everything, steppedconnect)
 
     local inputconnect = game.UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.LeftAlt then
+        if input.KeyCode == Enum.KeyCode.CapsLock then
             scripton = not scripton
-            if scripton then
-                game.StarterGui:SetCore("SendNotification", {
-                    Title = "Skillful: On";
-                    Text = "On"; 
-                    Duration = 0.05;
-                })
-            else
-                game.StarterGui:SetCore("SendNotification", {
-                    Title = "Skillful: Off";
-                    Text = "Off"; 
-                    Duration = 0.05;
-                })
-                if game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid").AutoRotate == false then
-                    game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid").AutoRotate = true
-                end
-            end
         elseif input.KeyCode == Enum.KeyCode.End then
             scripton = false
             if part then

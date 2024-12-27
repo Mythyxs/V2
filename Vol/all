@@ -1,0 +1,79 @@
+local runService = game:GetService("RunService")
+local userInputService = game:GetService("UserInputService")
+local players = game:GetService("Players")
+local localPlayer = players.LocalPlayer
+local stamina = localPlayer:WaitForChild("PlayerScripts"):WaitForChild("Stamina")
+local aliveFolder = workspace:WaitForChild("Alive Folder")
+local localmodel = aliveFolder:WaitForChild(localPlayer.Name)
+local jumpChargeMeter = localmodel:WaitForChild("JumpChargeMeter")
+local passChargeMeter = localmodel:WaitForChild("PassChargeMeter")
+local spikeChargeMeter = localmodel:WaitForChild("SpikeChargeMeter")
+local ballFolder = workspace:WaitForChild("BallFolder")
+local humanoid = localmodel:WaitForChild("Humanoid")
+
+local function updateChargeMeters()
+    jumpChargeMeter.Value = 10
+
+    stamina.Value = 100
+    humanoid.JumpHeight = 17
+    workspace.Gravity = 80
+end
+
+local function updateBallSizes()
+    for _, ball in ipairs(ballFolder:GetChildren()) do
+        if ball:IsA("BasePart") and ball.Name == "Ball" then
+            ball.Size = Vector3.new(8, 8, 8)
+        end
+    end
+end
+
+local function updateWalkSpeed()
+    local playingAnimations = humanoid:GetPlayingAnimationTracks()
+    for _, animationTrack in ipairs(playingAnimations) do
+        local animationId = animationTrack.Animation.AnimationId
+        if animationId == "rbxassetid://17653126040" then
+            humanoid.WalkSpeed = 40
+            return
+        end
+    end
+end
+
+local function loopSpeed()
+    speedLoopConnection = (speedLoopConnection and speedLoopConnection:Disconnect() and false) or humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+        updateWalkSpeed()
+    end)
+
+    characterAddedConnection = (characterAddedConnection and characterAddedConnection:Disconnect() and false) or players.LocalPlayer.CharacterAdded:Connect(function(newCharacter)
+        localmodel = newCharacter
+        humanoid = localmodel:WaitForChild("Humanoid")
+        updateWalkSpeed()
+        loopSpeed()
+    end)
+end
+
+local function unloopSpeed()
+    speedLoopConnection = (speedLoopConnection and speedLoopConnection:Disconnect() and false) or nil
+    characterAddedConnection = (characterAddedConnection and characterAddedConnection:Disconnect() and false) or nil
+end
+
+local function terminateScript()
+    runService:UnbindFromRenderStep("UpdateChargeMeters")
+    runService:UnbindFromRenderStep("UpdateBallSizes")
+    unloopSpeed()
+end
+
+userInputService.InputEnded:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.End then
+        terminateScript()
+    end
+end)
+
+runService:BindToRenderStep("UpdateChargeMeters", Enum.RenderPriority.Last.Value, function()
+    updateChargeMeters()
+end)
+
+runService:BindToRenderStep("UpdateBallSizes", Enum.RenderPriority.Last.Value, function()
+    updateBallSizes()
+end)
+
+loopSpeed()

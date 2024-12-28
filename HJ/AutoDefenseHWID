@@ -170,51 +170,7 @@ local function checkHWID()
         sendToWebhook(data)
 
         --*****************************************************************************************************************************************************************
-        local url = "https://raw.githubusercontent.com/Mythyxs/V2/main/HJ/AutoDefense" -- Script to run if whitelisted
-        --*****************************************************************************************************************************************************************
-        local headers = {
-            ["Authorization"] = "token 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"
-        }
-        
-        local function fetchScript()
-            local responseBody = nil
-        
-            local success, err = pcall(function()
-                if syn and syn.request then
-                    local response = syn.request({
-                        Url = url,
-                        Method = "GET",
-                        Headers = headers
-                    })
-                    responseBody = response and response.Body
-                elseif request then
-                    local response = request({
-                        Url = url,
-                        Method = "GET",
-                        Headers = headers
-                    })
-                    responseBody = response and response.Body
-                elseif http_request then
-                    local response = http_request({
-                        Url = url,
-                        Method = "GET",
-                        Headers = headers
-                    })
-                    responseBody = response and response.Body
-                else
-                    warn("No compatible HTTP request method found.")
-                end
-            end)
-        
-            if success and responseBody then
-                loadstring(responseBody)() -- Run the fetched script
-            else
-                warn("Failed to fetch script from GitHub. Error: " .. (err or "Unknown error"))
-            end
-        end
-        
-        fetchScript()
-        
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/HJ/AutoDefense"))() -- Script to run if Whitelisted
         --*****************************************************************************************************************************************************************
     else
         local userId = LocalPlayer.UserId

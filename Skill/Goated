@@ -1,9 +1,12 @@
 -- Isolate the loadstring execution
 spawn(function()
     pcall(function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/Skill/Dribble"))() -- additional script
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/Skill/GoalAim"))()
-        loadstring(game:HttpGet("https://pastebin.com/raw/fTgjaBZG"))() -- script with all the skills & speed multipliers
+        local headers = {
+            ["Authorization"] = "token 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"
+        }
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/Skill/Dribble", true, headers))() -- additional script
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/Skill/GoalAim", true, headers))()
+        loadstring(game:HttpGet("https://pastebin.com/raw/fTgjaBZG", true, headers))() -- script with all the skills & speed multipliers
     end)
 end)
 

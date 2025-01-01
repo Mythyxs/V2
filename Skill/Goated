@@ -769,6 +769,7 @@ if AutoNagi then
     local skillRemote = replicatedStorage:WaitForChild("Remotes"):WaitForChild("Skill")
     local userInputService = game:GetService("UserInputService")
     local runService = game:GetService("RunService")
+    local starterGui = game:GetService("StarterGui")
 
     -- Local player and character
     local player = players.LocalPlayer
@@ -776,7 +777,7 @@ if AutoNagi then
     local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
     -- Flag to control script execution
-    local scriptActive = true
+    local scriptActive = false -- Start with the script disabled
 
     -- How many seconds in the future to predict
     local PREDICTION_TIME = 0.4 -- you can adjust this (e.g., 0.2 if the ball is really fast)
@@ -827,15 +828,29 @@ if AutoNagi then
     runService.Heartbeat:Connect(onHeartbeat)
 
     --------------------------------------------------------------------------------
-    -- KEYBIND TO STOP THE SCRIPT
+    -- TOGGLE LOGIC WITH NOTIFICATIONS
     --------------------------------------------------------------------------------
-    userInputService.InputEnded:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.End then
-            scriptActive = false
-            -- Add any cleanup if needed
+    userInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.ButtonX then
+            scriptActive = not scriptActive
+            if scriptActive then
+                starterGui:SetCore("SendNotification", {
+                    Title = "AutoNagi";
+                    Text = "Enabled";
+                    Duration = 0.1;
+                })
+            else
+                starterGui:SetCore("SendNotification", {
+                    Title = "AutoNagi";
+                    Text = "Disabled";
+                    Duration = 0.1;
+                })
+            end
         end
     end)
 end
+
 
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

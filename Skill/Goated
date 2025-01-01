@@ -813,11 +813,11 @@ if AutoNagi then
             
             -- Compare predicted Y with the character’s HRP Y
             local predictedHeightDiff = predictedPosition.Y - humanoidRootPart.Position.Y
-            local predictedDistance = (predictedPosition - humanoidRootPart.Position).Magnitude
+            local predictedDistance = (Vector3.new(predictedPosition.X, humanoidRootPart.Position.Y, predictedPosition.Z) - humanoidRootPart.Position).Magnitude
 
-            -- If the predicted position is above us by 15 studs and within 100 studs, trigger early
-            if predictedHeightDiff >= 15 and predictedDistance <= 35 then
-                print("Ball (predicted) above 15 studs and within 100 studs at position:", predictedPosition)
+            -- If the predicted position is above us by 15 studs and within 35 studs horizontally, and up to 75 studs vertically, trigger early
+            if predictedHeightDiff >= 15 and predictedDistance <= 35 and predictedHeightDiff <= 75 then
+                print("Ball (predicted) above 15 studs and within 35 studs horizontally, up to 75 studs vertically at position:", predictedPosition)
                 skillRemote:FireServer(unpack(args))
             end
         end
@@ -832,7 +832,6 @@ if AutoNagi then
     userInputService.InputEnded:Connect(function(input)
         if input.KeyCode == Enum.KeyCode.End then
             scriptActive = false
-            print("Script execution stopped.")
             -- Add any cleanup if needed
         end
     end)

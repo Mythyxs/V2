@@ -779,7 +779,7 @@ if AutoNagi then
     local scriptActive = true
 
     -- How many seconds in the future to predict
-    local PREDICTION_TIME = 0.3 -- you can adjust this (e.g., 0.2 if the ball is really fast)
+    local PREDICTION_TIME = 0.4 -- you can adjust this (e.g., 0.2 if the ball is really fast)
 
     --------------------------------------------------------------------------------
     -- BALL-TRACKING LOGIC USING RUNSERVICE.HEARTBEAT

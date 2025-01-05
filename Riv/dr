@@ -1,0 +1,83 @@
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+-- Utility function to calculate XZ plane vectors
+local function XZ(V)
+    return Vector3.new(V.X, 0, V.Z)
+end
+
+-- Define regression models for dynamic thresholds
+local function quadraticModelDotProduct(distance)
+    return 0.5 + (distance * -0.01) + (distance^2 * 0.0001)
+end
+
+local function logarithmicModelDotProduct(distance)
+    return 0.5 + math.log(distance + 1) * -0.05
+end
+
+local function regressionModelVelocityDot(distance)
+    return 15 + (distance * 0.5)
+end
+
+-- Function to check if a character is sliding towards the player
+local function isCharacterSlidingTowardsPlayer(character, player)
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return false end
+
+    local playerPosition = player.HumanoidRootPart.Position
+    local characterPosition = humanoidRootPart.Position
+    local characterForward = humanoidRootPart.CFrame.LookVector
+    local characterVelocity = humanoidRootPart.Velocity
+
+    local directionToPlayer = (playerPosition - characterPosition).unit
+    local dotProduct = characterForward:Dot(directionToPlayer)
+    local velocityDot = characterVelocity:Dot(directionToPlayer)
+
+    local distance = (characterPosition - playerPosition).Magnitude
+    local dotProductThreshold = quadraticModelDotProduct(distance)
+    local velocityDotThreshold = regressionModelVelocityDot(distance)
+
+    return dotProduct > dotProductThreshold or velocityDot >= velocityDotThreshold
+end
+
+-- Function to find sliding players near the local player
+local function checkSlidingPlayers()
+    local localPlayer = game:GetService("Players").LocalPlayer
+    local playerModel = localPlayer.Character
+    if not playerModel or not playerModel:FindFirstChild("HumanoidRootPart") then return end
+
+    local localPosition = playerModel.HumanoidRootPart.Position
+
+    for _, player in pairs(workspace:GetChildren()) do
+        if player:IsA("Model") and player ~= playerModel and player:FindFirstChild("Values") then
+            local sliding = player.Values:FindFirstChild("Sliding")
+            local hasBall = player.Values:FindFirstChild("HasBall")
+            local humanoidRootPart = player:FindFirstChild("HumanoidRootPart")
+
+            if sliding and humanoidRootPart and sliding.Value and isCharacterSlidingTowardsPlayer(player, playerModel) then
+                local distance = (XZ(localPosition) - XZ(humanoidRootPart.Position)).Magnitude
+                if distance < 20 then
+                    VirtualInputManager:SendKeyEvent(true, "Q", false, nil)
+                    wait(0.01) -- Slight delay to avoid spamming
+                    VirtualInputManager:SendKeyEvent(false, "Q", false, nil)
+                end
+            end
+        end
+    end
+end
+
+-- Run the sliding detection loop
+local runLoop
+runLoop = game:GetService("RunService").RenderStepped:Connect(function()
+    pcall(checkSlidingPlayers)
+end)
+
+-- Disconnect the loop when the "End" key is pressed
+game:GetService("UserInputService").InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.End then
+        pcall(function()
+            if runLoop then
+                runLoop:Disconnect()
+            end
+        end)
+    end
+end)

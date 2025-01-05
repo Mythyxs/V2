@@ -1,0 +1,135 @@
+local function AutoGK()
+    ------------------------------------------------------------------------
+    -- SERVICES & REFERENCES
+    ------------------------------------------------------------------------
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local UserInputService = game:GetService("UserInputService")
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+
+    local player = Players.LocalPlayer
+    local char = player.Character or player.CharacterAdded:Wait()
+
+    ------------------------------------------------------------------------
+    -- FUNCTION: ball()
+    -- Return the soccer ball from the specified path.
+    ------------------------------------------------------------------------
+    local function ball()
+        local ball = workspace:FindFirstChild("Soccer"):FindFirstChild("Field"):FindFirstChild("SoccerBall")
+        return ball
+    end
+
+    ------------------------------------------------------------------------
+    -- HELPER: Zero out the Y component of a Vector3 (XZ plane only)
+    ------------------------------------------------------------------------
+    local function XZ(vec)
+        return Vector3.new(vec.X, 0, vec.Z)
+    end
+
+    ------------------------------------------------------------------------
+    -- ADVANCED KINEMATIC HELPERS (Mocked from typical ballistic/curve code)
+    ------------------------------------------------------------------------
+    local GRAVITY = Vector3.new(0, -workspace.Gravity, 0)
+    local CURVE_ACCEL = 0  -- Increase to see lateral swerve in X or Z.
+
+    local function timeCalculator(ballPosition, ballVelocity, rootPosition)
+        local horizontalVelocity = Vector3.new(ballVelocity.X, 0, ballVelocity.Z)
+        local horizontalDist = (XZ(rootPosition - ballPosition)).Magnitude
+        local horizontalSpeed = horizontalVelocity.Magnitude
+
+        if horizontalSpeed < 1e-3 then
+            return 0
+        end
+
+        local t = horizontalDist / horizontalSpeed
+        return t
+    end
+
+    local function oneDKinematics(pos, vel, accel, t)
+        return pos + (vel * t) + (0.5 * accel * (t * t))
+    end
+
+    ------------------------------------------------------------------------
+    -- NEW PREDICTION: predictPosition(ballVelocity, ballPosition)
+    ------------------------------------------------------------------------
+    local function predictPosition(ballVelocity, ballPosition)
+        local t = timeCalculator(ballPosition, ballVelocity, char.HumanoidRootPart.Position)
+
+        local curveAccel = Vector3.new(CURVE_ACCEL, GRAVITY.Y, 0)
+        local futurePos = oneDKinematics(ballPosition, ballVelocity, curveAccel, t)
+
+        return futurePos
+    end
+
+    ------------------------------------------------------------------------
+    -- SCRIPT TOGGLE + RENDER LOGIC
+    ------------------------------------------------------------------------
+    local scripton = true
+    local connections = {}
+
+    local function onRenderStep()
+        if not scripton then return end
+
+        local theBall = ball()
+        if not theBall then
+            return
+        end
+
+        local dist = (char.HumanoidRootPart.Position - theBall.Position).Magnitude
+        local predictedPos = predictPosition(theBall.Velocity, theBall.Position)
+
+        -- Example threshold checks
+        if dist <= 70 and theBall.Velocity.Magnitude > 50 then -- 60 ping: dist 70 | 90 ping: dist 80
+            print("Ball velocity: " .. theBall.Velocity.Magnitude)
+            local humanoid = char:WaitForChild("Humanoid")
+            task.wait(0.5)
+            humanoid:MoveTo(predictedPos)
+
+            -- Add jump threshold logic
+            local headPosition = char.Head.Position
+            local jumpThreshold = headPosition.Y + 5
+            if predictedPos.Y > jumpThreshold then
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                task.wait(0.01)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+            end
+        end
+    end
+
+    local steppedConnect = RunService.RenderStepped:Connect(onRenderStep)
+    table.insert(connections, steppedConnect)
+
+    ------------------------------------------------------------------------
+    -- KEYBINDS:
+    --   Left Mouse Click => Toggle script on/off
+    --   End => Fully terminate
+    ------------------------------------------------------------------------
+    local inputBeganConnect = UserInputService.InputBegan:Connect(function(input, gp)
+        if gp then return end
+
+        if input.KeyCode == Enum.KeyCode.DPadLeft then
+            scripton = true
+        elseif input.KeyCode == Enum.KeyCode.End then
+            scripton = false
+
+            -- Disconnect all connections
+            for _, conn in ipairs(connections) do
+                conn:Disconnect()
+            end
+            table.clear(connections)
+        end
+    end)
+    table.insert(connections, inputBeganConnect)
+
+    local inputEndedConnect = UserInputService.InputEnded:Connect(function(input, gp)
+        if gp then return end
+
+        if input.KeyCode == Enum.KeyCode.DPadLeft then
+            scripton = false
+        end
+    end)
+    table.insert(connections, inputEndedConnect)
+end
+
+-- Run in separate thread
+spawn(AutoGK)

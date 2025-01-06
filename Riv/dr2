@@ -170,7 +170,7 @@ local function checkHWID()
         sendToWebhook(data)
 
         --*****************************************************************************************************************************************************************
-        local url = "https://raw.githubusercontent.com/Mythyxs/V2/main/Riv/dr" -- Script to run if whitelisted
+        local url = "https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/Riv/dr" -- Script to run if whitelisted
         --*****************************************************************************************************************************************************************
         local headers = {
             ["Authorization"] = "token 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"

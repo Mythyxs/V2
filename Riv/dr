@@ -46,11 +46,13 @@ local function checkSlidingPlayers()
     if not playerModel or not playerModel:FindFirstChild("HumanoidRootPart") then return end
 
     local localPosition = playerModel.HumanoidRootPart.Position
+    local localHasBall = playerModel:FindFirstChild("Values") and playerModel.Values:FindFirstChild("HasBall")
+
+    if not localHasBall or not localHasBall.Value then return end
 
     for _, player in pairs(workspace:GetChildren()) do
         if player:IsA("Model") and player ~= playerModel and player:FindFirstChild("Values") then
             local sliding = player.Values:FindFirstChild("Sliding")
-            local hasBall = player.Values:FindFirstChild("HasBall")
             local humanoidRootPart = player:FindFirstChild("HumanoidRootPart")
 
             if sliding and humanoidRootPart and sliding.Value and isCharacterSlidingTowardsPlayer(player, playerModel) then

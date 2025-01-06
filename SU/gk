@@ -79,10 +79,10 @@ local function AutoGK()
         local predictedPos = predictPosition(theBall.Velocity, theBall.Position)
 
         -- Example threshold checks
-        if dist <= 70 and theBall.Velocity.Magnitude > 50 then -- 60 ping: dist 70 | 90 ping: dist 80
+        if dist <= 70 and theBall.Velocity.Magnitude > 40 then -- 60 ping: dist 70 | 90 ping: dist 80
             print("Ball velocity: " .. theBall.Velocity.Magnitude)
             local humanoid = char:WaitForChild("Humanoid")
-            task.wait(0.4)
+            task.wait(0.35)
             humanoid:MoveTo(predictedPos)
 
             -- Add jump threshold logic

@@ -352,7 +352,7 @@ end
 end)
 
 game.UserInputService.InputBegan:connect(function(input)
-	if input.KeyCode == Enum.KeyCode.End then
+	if input.KeyCode == Enum.KeyCode.ButtonB then
 		pcall(function()
             game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Size = Vector3.new(2,2,1)
 			if runLoop then

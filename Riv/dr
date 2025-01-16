@@ -57,7 +57,7 @@ local function checkSlidingPlayers()
 
             if sliding and humanoidRootPart and sliding.Value and isCharacterSlidingTowardsPlayer(player, playerModel) then
                 local distance = (XZ(localPosition) - XZ(humanoidRootPart.Position)).Magnitude
-                if distance < 20 then
+                if distance < 25 then
                     VirtualInputManager:SendKeyEvent(true, "ButtonR1", false, nil)
                     wait(0.01) -- Slight delay to avoid spamming
                     VirtualInputManager:SendKeyEvent(false, "ButtonR1", false, nil)

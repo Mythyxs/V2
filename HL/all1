@@ -58,7 +58,7 @@ local function onInputBegan(input, gameProcessed)
         script:Destroy()
     end
     if gameProcessed or not on then return end
-    if input.KeyCode == Enum.KeyCode.F then
+    if input.KeyCode == Enum.KeyCode.ButtonL1 then
         instapost()
     end
 end

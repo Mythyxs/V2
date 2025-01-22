@@ -1,0 +1,74 @@
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+local player = Players.LocalPlayer
+local shooting = player:WaitForChild("Values"):WaitForChild("shooting")
+local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shoot")
+
+local args = {
+    [1] = 1.0202941438183188,
+    [2] = "Ending",
+    [3] = "down",
+    [4] = false,
+    [5] = 0,
+    [6] = 0
+}
+
+local shootingConnection
+local shit
+local on = true
+
+local function shot()
+    if shooting.Value then
+        task.wait(0.4)
+        remote:FireServer(unpack(args))
+    end
+end
+
+local function nigga()
+    on = false
+    RunService:UnbindFromRenderStep("nigga")
+end
+
+local function instapost()
+    if not on then return end
+
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+    task.wait(0.12)
+
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.G, false, game)
+    wait(1)
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.G, false, game)
+
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+end
+
+local function onInputBegan(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.End then
+        if shootingConnection then
+            shootingConnection:Disconnect()
+        end
+        if shit then
+            shit:Disconnect()
+        end
+        nigga()
+        script:Destroy()
+    end
+    if gameProcessed or not on then return end
+    if input.KeyCode == Enum.KeyCode.F then
+        instapost()
+    end
+end
+
+local function onInputEnded(input)
+    if input.KeyCode == Enum.KeyCode.End then
+        nigga()
+    end
+end
+
+shootingConnection = shooting:GetPropertyChangedSignal("Value"):Connect(shot)
+shit = UserInputService.InputBegan:Connect(onInputBegan)
+UserInputService.InputEnded:Connect(onInputEnded)

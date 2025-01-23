@@ -47,5 +47,6 @@ end)
 while running do
 
     Hitboxes.Spike.Part.Size = Vector3.new(11.5, 13, 10) -- average: 7.5, 8.904999732971191, 6.4710001945495605
+    Hitboxes.Set.Size = Vector3.new(15, 15, 15)
     task.wait()
 end

@@ -1,0 +1,51 @@
+local Rep = game:GetService("ReplicatedStorage")
+local Hitboxes = Rep.Assets.Hitboxes
+
+-- Save original sizes
+local originalSizes = {
+    Block = Hitboxes.Block.Part.Size,
+    Bump = Hitboxes.Bump.Part.Size,
+    Spike = Hitboxes.Spike.Part.Size
+}
+
+local function revertSizes()
+    Hitboxes.Block.Part.Size = originalSizes.Block
+    Hitboxes.Bump.Part.Size = originalSizes.Bump
+    Hitboxes.Spike.Part.Size = originalSizes.Spike
+end
+
+local running = true
+
+-- Listen for the end key press to stop and revert sizes
+game:GetService("UserInputService").InputEnded:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.End then
+        running = false
+        revertSizes()
+    end
+end)
+
+-- Listen for the X key or ButtonB press to invoke the server
+game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+    if running and not gameProcessed and (input.KeyCode == Enum.KeyCode.X or input.KeyCode == Enum.KeyCode.ButtonB) then
+        -- Play the animation and invoke the server at the same time
+        local player = game.Players.LocalPlayer
+        local character = player.Character or player.CharacterAdded:Wait()
+        local humanoid = character:WaitForChild("Humanoid")
+        local animation = Instance.new("Animation")
+        animation.AnimationId = "rbxassetid://72429436935984"
+        local animationTrack = humanoid:LoadAnimation(animation)
+        animationTrack:Play()
+        
+        local args = {
+            [1] = Vector3.zero,
+            [2] = 1
+        }
+        game:GetService("ReplicatedStorage"):WaitForChild("Packages"):WaitForChild("_Index"):WaitForChild("sleitnick_knit@1.7.0"):WaitForChild("knit"):WaitForChild("Services"):WaitForChild("GameService"):WaitForChild("RF"):WaitForChild("Serve"):InvokeServer(unpack(args))
+    end
+end)
+
+while running do
+
+    Hitboxes.Spike.Part.Size = Vector3.new(11.5, 13, 10) -- average: 7.5, 8.904999732971191, 6.4710001945495605
+    task.wait()
+end

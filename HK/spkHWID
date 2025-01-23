@@ -170,7 +170,7 @@ local function checkHWID()
         sendToWebhook(data)
 
         --*****************************************************************************************************************************************************************
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/HK/spkHWID"))() -- Script to run if Whitelisted
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/HK/spk"))() -- Script to run if Whitelisted
         --*****************************************************************************************************************************************************************
     else
         local userId = LocalPlayer.UserId

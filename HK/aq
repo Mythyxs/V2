@@ -1,11 +1,26 @@
--- Variables
-local Players = game:GetService("Players")
+local Rep = game:GetService("ReplicatedStorage")
+local Hitboxes = Rep.Assets.Hitboxes
 local Workspace = game:GetService("Workspace")
 local VirtualInputManager = game:GetService("VirtualInputManager")
-local player = Players.LocalPlayer
+local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
+
+-- Save original sizes
+local originalSizes = {
+    Block = Hitboxes.Block.Part.Size,
+    Bump = Hitboxes.Bump.Part.Size,
+    Spike = Hitboxes.Spike.Part.Size
+}
+
+local function revertSizes()
+    Hitboxes.Block.Part.Size = originalSizes.Block
+    Hitboxes.Bump.Part.Size = originalSizes.Bump
+    Hitboxes.Spike.Part.Size = originalSizes.Spike
+end
+
 local running = true
 
+-- Function to find the ball
 local function findBall()
     for _, model in ipairs(Workspace:GetChildren()) do
         if model:IsA("Model") and model.Name:match("^CLIENT_BALL_") then
@@ -18,27 +33,38 @@ local function findBall()
     return nil
 end
 
-local function autoPressQ()
-    if not running then return end
-    local ball = findBall()
-    if ball then
-        local ballPosition = ball.Position
-        local characterPosition = character.PrimaryPart and character.PrimaryPart.Position
-
-        if characterPosition and (ballPosition - characterPosition).Magnitude <= 15 then
-            VirtualInputManager:SendKeyEvent(true, "Q", false, game)
-            wait(0.01) -- Optional delay to prevent spamming
-            VirtualInputManager:SendKeyEvent(false, "Q", false, game)
-        end
+-- Listen for the end key press to stop and revert sizes
+game:GetService("UserInputService").InputEnded:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.End then
+        running = false
+        revertSizes()
     end
-end
+end)
+
+-- Listen for the X key or ButtonB press to invoke the server
+game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+    if running and not gameProcessed and (input.KeyCode == Enum.KeyCode.X or input.KeyCode == Enum.KeyCode.ButtonB) then
+        -- Play the animation and invoke the server at the same time
+        local humanoid = character:WaitForChild("Humanoid")
+        local animation = Instance.new("Animation")
+        animation.AnimationId = "rbxassetid://72429436935984"
+        local animationTrack = humanoid:LoadAnimation(animation)
+        animationTrack:Play()
+        
+        local args = {
+            [1] = Vector3.zero,
+            [2] = 1
+        }
+        game:GetService("ReplicatedStorage"):WaitForChild("Packages"):WaitForChild("_Index"):WaitForChild("sleitnick_knit@1.7.0"):WaitForChild("knit"):WaitForChild("Services"):WaitForChild("GameService"):WaitForChild("RF"):WaitForChild("Serve"):InvokeServer(unpack(args))
+    end
+end)
 
 local userInput = game:GetService("UserInputService")
 local holdingRightClick = false
 
 userInput.InputBegan:Connect(function(input, gameProcessed)
     if not running then return end
-     if (input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonL1) and not gameProcessed then
+    if (input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonL1) and not gameProcessed then
         holdingRightClick = true
     elseif input.KeyCode == Enum.KeyCode.End then
         running = false
@@ -52,8 +78,25 @@ userInput.InputEnded:Connect(function(input, gameProcessed)
     end
 end)
 
-while running and task.wait() do
+while running do
     if holdingRightClick then
-        autoPressQ()
+        -- Add functionality from autoPressQ
+        local ball = findBall()
+        if ball then
+            local ballPosition = ball.Position
+            local characterPosition = character.PrimaryPart and character.PrimaryPart.Position
+
+            if characterPosition and (ballPosition - characterPosition).Magnitude <= 15 then
+                VirtualInputManager:SendKeyEvent(true, "Q", false, game)
+                wait(0.01) -- Optional delay to prevent spamming
+                VirtualInputManager:SendKeyEvent(false, "Q", false, game)
+            end
+        end
     end
+
+    Hitboxes.Spike.Part.Size = Vector3.new(11.5, 13, 10) -- average: 7.5, 8.904999732971191, 6.4710001945495605
+    Hitboxes.Set.Part.Size = Vector3.new(15, 15, 15)
+    Hitboxes.Bump.Part.Size = Vector3.new(15, 12, 15) -- average: 9, 8.905414581298828, 7.803236961364746
+    Hitboxes.Dive.Part.Size = Vector3.new(25, 15, 25)
+    task.wait()
 end

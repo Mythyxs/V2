@@ -38,7 +38,7 @@ local holdingRightClick = false
 
 userInput.InputBegan:Connect(function(input, gameProcessed)
     if not running then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton2 and not gameProcessed then
+     if (input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonL1) and not gameProcessed then
         holdingRightClick = true
     elseif input.KeyCode == Enum.KeyCode.End then
         running = false
@@ -47,7 +47,7 @@ end)
 
 userInput.InputEnded:Connect(function(input, gameProcessed)
     if not running then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+    if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonL1 then
         holdingRightClick = false
     end
 end)

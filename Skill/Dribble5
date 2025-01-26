@@ -365,10 +365,10 @@ end
 end)
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
-
+local JallOn = false
 secondloop = game:GetService("RunService").Heartbeat:Connect(function()
     wait(0.1)
-    if dribbleball() then
+    if dribbleball() and JallOn then
         local jall = dribbleball() 
         if not game:GetService("Players").LocalPlayer.Character.InstanceValue:FindFirstChild("Possession") then
             local ballDistance = (jall.Position - game.Players.LocalPlayer.Character.Head.Position).Magnitude

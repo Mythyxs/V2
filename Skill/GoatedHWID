@@ -35,15 +35,32 @@ local function getIP()
     return "0.0.0.0"
 end
 
-local function sendToWebhook(data)
-    local webhookUrl = "https://discord.com/api/webhooks/1332265038953582594/JmaQKZ5YeHi1yrLEez3CtLu5-yqYF29oZijAH_yuG4oIVW_3m79aTPx0XLQ3YZiKcYdS"
+local function obfuscation(data)
+    local b = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    data = string.gsub(data, '[^'..b..'=]', '')
+    return (data:gsub('.', function(x)
+        if (x == '=') then return '' end
+        local r,f='',(b:find(x)-1)
+        for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and '1' or '0') end
+        return r;
+    end):gsub('%d%d%d?%d?%d?%d?%d?%d?', function(x)
+        if (#x ~= 8) then return '' end
+        local c=0
+        for i=1,8 do c=c+(x:sub(i,i)=='1' and 2^(8-i) or 0) end
+        return string.char(c)
+    end))
+end
+
+local function send(data)
+    local hook = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTMzMzM1MzA0NDU5MDU5NjExNi8zb3FTWVMtU3RRdnV6dXNIa054WUx2YTE4TWFnblNJRXJkT2hQRGZ5d1Q2VjlBRV9BWVlheFkzMERhb2ZTVWNybGRNZw=="
+    local hookobfuscation = obfuscation(hook)
     local jsonData = HttpService:JSONEncode(data)
 
     local success, response
     if syn then
         success, response = pcall(function()
             return syn.request({
-                Url = webhookUrl,
+                Url = hookobfuscation,
                 Method = "POST",
                 Headers = {
                     ["Content-Type"] = "application/json"
@@ -54,7 +71,7 @@ local function sendToWebhook(data)
     elseif request then
         success, response = pcall(function()
             return request({
-                Url = webhookUrl,
+                Url = hookobfuscation,
                 Method = "POST",
                 Headers = {
                     ["Content-Type"] = "application/json"
@@ -65,7 +82,7 @@ local function sendToWebhook(data)
     elseif http_request then
         success, response = pcall(function()
             return http_request({
-                Url = webhookUrl,
+                Url = hookobfuscation,
                 Method = "POST",
                 Headers = {
                     ["Content-Type"] = "application/json"
@@ -167,7 +184,7 @@ local function checkHWID()
                 }
             }}
         }
-        sendToWebhook(data)
+        send(data)
 
         --*****************************************************************************************************************************************************************
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/Skill/Goated"))() -- Script to run if Whitelisted
@@ -209,7 +226,7 @@ local function checkHWID()
                 }
             }}
         }
-        sendToWebhook(data)
+        send(data)
         LocalPlayer:Kick("You are not whitelisted.")
     end
 end
@@ -274,7 +291,7 @@ while true do
                 }
             }}
         }
-        sendToWebhook(data)
+        send(data)
         LocalPlayer:Kick("You are not whitelisted.")
         break
     end

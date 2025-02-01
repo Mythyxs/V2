@@ -42,8 +42,15 @@ function autotime(state)
     end
     
     while a do
-        local myping = game:GetService("CoreGui").RobloxGui.PerformanceStats:GetChildren()[6].StatsMiniTextPanelClass.ValueLabel.Text
-        local current = tonumber(myping:match("^(%d+%.?%d*)")) or 0
+        local PerformanceStats = game:GetService("CoreGui"):WaitForChild("RobloxGui"):WaitForChild("PerformanceStats")
+        local PingLabel
+        for i, Child in next, PerformanceStats:GetChildren() do
+            if Child.StatsMiniTextPanelClass.TitleLabel.Text == "Ping" then
+                PingLabel = Child.StatsMiniTextPanelClass.ValueLabel.Text
+                break
+            end
+        end
+        local current = tonumber(PingLabel:match("^(%d+%.?%d*)")) or 0
         local threshold = threshold(current)
         local char = workspace[game.Players.LocalPlayer.Name]
         local value = char.Properties.ShotMeter.Value

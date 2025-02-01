@@ -1,0 +1,67 @@
+--[[
+174.82 ms - 35 / 100
+166.75 ms - 35 / 100
+250.55 ms - 15 / 100
+103.39 ms - 55 / 100 
+60.32 ms - 72 / 100
+35.02 ms - 90 / 100
+]]
+
+local function threshold(ping)
+    if ping <= 35.02 then
+        return 0.90
+    elseif ping <= 60.32 then
+        local slope = (0.72 - 0.90) / (60.32 - 35.02)
+        local offset = 0.90 - slope * 35.02
+        return slope * ping + offset
+    elseif ping <= 103.39 then
+        local slope = (0.55 - 0.72) / (103.39 - 60.32)
+        local offset = 0.72 - slope * 60.32
+        return slope * ping + offset
+    elseif ping <= 166.75 then
+        local slope = (0.35 - 0.55) / (166.75 - 103.39)
+        local offset = 0.55 - slope * 103.39
+        return slope * ping + offset
+    elseif ping <= 174.82 then
+        -- Flat line at 0.35
+        return 0.35
+    elseif ping <= 250.55 then
+        local slope = (0.15 - 0.35) / (250.55 - 174.82)
+        local offset = 0.35 - slope * 174.82
+        return slope * ping + offset
+    else
+        return 0.15
+    end
+end
+local a = false
+
+function autotime(state)
+    a = state
+    if not a then
+        return
+    end
+    
+    while a do
+        local myping = game:GetService("CoreGui").RobloxGui.PerformanceStats:GetChildren()[6].StatsMiniTextPanelClass.ValueLabel.Text
+        local current = tonumber(myping:match("^(%d+%.?%d*)")) or 0
+        local threshold = threshold(current)
+        local char = workspace[game.Players.LocalPlayer.Name]
+        local value = char.Properties.ShotMeter.Value
+        if value > threshold and value < 2 then
+            local args = {
+                [1] = "Shoot",
+                [2] = false
+            }
+            game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer(unpack(args))
+        end
+        
+        task.wait()
+    end
+end
+game:GetService("UserInputService").InputEnded:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.End then
+        a = false
+        script:Destroy()
+    end
+end)
+autotime(true)

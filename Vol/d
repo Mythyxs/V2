@@ -1,41 +1,56 @@
 -- start on net shit
 local TeamNameOk = ""
+
 local VirtualInputManager = Instance.new('VirtualInputManager')
 local mouse = game.Players.LocalPlayer:GetMouse()
 local Camera = workspace.CurrentCamera
+
 -- Add toggle state
 local autoEnabled = false
+local eastSideCrytToggle = false
+local previousSetter = nil
+
 local function LeftClick()
     VirtualInputManager:SendMouseButtonEvent(mouse.X, mouse.Y, 0, true, game, 0)
-    task.wait(0.1) -- Simulate holding the click for a short duration
+    task.wait(0.1) -- make 0.1 if too skibidi
     VirtualInputManager:SendMouseButtonEvent(mouse.X, mouse.Y, 0, false, game, 0)
 end
+
 local function ActivateDive()
     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
 end
+
+
 --------------------------------------------------------------------------------------------------------------------
+
 -- Services
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local RunService = game:GetService("RunService")
 local workspace = game:GetService("Workspace")
+
 -- Local Player
 local LocalPlayer = Players.LocalPlayer
 local AliveFolder = workspace:WaitForChild("Alive Folder")
 local LocalModel = AliveFolder:WaitForChild(LocalPlayer.Name)
 local PassChargeMeter = LocalModel:WaitForChild("PassChargeMeter")
 local Humanoid = LocalModel:WaitForChild("Humanoid")
+
 --------------------------------------------------------------------------------------------------------------------
+
 local net
 if game.PlaceId == 17435076424 then -- Park Gym
     net = workspace.FunctionalityHitboxes.CourtA.Net
 elseif game.PlaceId == 17516264439 then -- Haikyu Gym
     net = workspace.Net
+elseif game.PlaceId == 80022670470204 then -- Beach Gym
+    net = workspace.MAP.CourtA.Net
 else
     net = workspace.NetUtilities.Net -- Nationals Gym
 end
+
 local InHitbox
 if game.PlaceId == 17435076424 then -- Park Gym
     InHitbox = workspace.FunctionalityHitboxes.InHitbox
@@ -44,12 +59,15 @@ elseif game.PlaceId == 17516264439 then -- Haikyu Gym
 else 
     InHitbox = workspace.InHitbox
 end
+
 --------------------------------------------------------------------------------------------------------------------
+
 -- Variables
 local selectedSetter = nil
 local aimLock = false
 local debounce = false
 local scriptActive = true
+
 -- Function to calculate passing power using a predefined linear equation
 local function calculatePassingPower(distance)
     local netDistance = (LocalPlayer.Character.HumanoidRootPart.Position - net.Position).Magnitude
@@ -61,11 +79,18 @@ local function calculatePassingPower(distance)
     end
     return math.clamp(value, 0, 150) -- Ensure the value stays within valid range
 end
+
+local function calculatePassingPowerEastSideCryt(distance)
+    return 0.936501 * distance + 41.02382
+end
+
 --------------------------------------------------------------------------------------------------------------------
+
 -- Function to get the nearest player
 local function getNearestPlayer()
     local nearestPlayer = nil
     local shortestDistance = math.huge
+
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             local distance = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
@@ -75,19 +100,43 @@ local function getNearestPlayer()
             end
         end
     end
+
     return nearestPlayer
 end
+
 --------------------------------------------------------------------------------------------------------------------
+
 -- Function to update the PassChargeMeter
+local passActive = true
+
 local function updatePassChargeMeter()
-    if selectedSetter and selectedSetter.Character and selectedSetter.Character:FindFirstChild("HumanoidRootPart") then
-        local distance = (LocalPlayer.Character.HumanoidRootPart.Position - selectedSetter.Character.HumanoidRootPart.Position).Magnitude
-        PassChargeMeter.Value = calculatePassingPower(distance)
-    else
-        PassChargeMeter.Value = 80 -- Default to 0 if no setter is selected
+    if passActive then
+        if eastSideCrytToggle and selectedSetter and selectedSetter.Character and selectedSetter.Character:FindFirstChild("HumanoidRootPart") then
+            local distance = (LocalPlayer.Character.HumanoidRootPart.Position - selectedSetter.Character.HumanoidRootPart.Position).Magnitude
+            PassChargeMeter.Value = calculatePassingPowerEastSideCryt(distance)
+        elseif selectedSetter and selectedSetter.Character and selectedSetter.Character:FindFirstChild("HumanoidRootPart") then
+            local distance = (LocalPlayer.Character.HumanoidRootPart.Position - selectedSetter.Character.HumanoidRootPart.Position).Magnitude
+            PassChargeMeter.Value = calculatePassingPower(distance)
+        else
+            PassChargeMeter.Value = 90 -- previous: 80
+        end
     end
 end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    if input.KeyCode == Enum.KeyCode.End then
+        passActive = false
+        PassChargeMeter.Value = 0
+        scriptActive = false
+        aimLock = false
+        selectedSetter = nil
+    end
+end)
+
 --------------------------------------------------------------------------------------------------------------------
+
 -- Smooth camera locking using RenderStepped
 RunService.RenderStepped:Connect(function()
     if scriptActive and aimLock and selectedSetter and selectedSetter.Character and selectedSetter.Character:FindFirstChild("HumanoidRootPart") then
@@ -96,15 +145,20 @@ RunService.RenderStepped:Connect(function()
         camera.CFrame = CFrame.new(camera.CFrame.Position, targetPart.Position)
     end
 end)
+
 --------------------------------------------------------------------------------------------------------------------
+
 -- Input handling for selecting a setter
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed or not scriptActive then return end
+
     if input.KeyCode == Enum.KeyCode.V then
         if debounce then return end -- Prevent spamming
         debounce = true
+
         if selectedSetter then
             selectedSetter = nil
+            eastSideCrytToggle = false -- Reset eastSideCrytToggle when removing setter
             StarterGui:SetCore("SendNotification", {
                 Title = "Setter Removed",
                 Text = "You have removed the current setter.",
@@ -127,6 +181,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
                 })
             end
         end
+
         task.delay(0.5, function() -- Cooldown to prevent spam
             debounce = false
         end)
@@ -153,19 +208,41 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             Text = "All functionalities have been disabled.",
             Duration = 0.1,
         })
+    elseif input.KeyCode == Enum.KeyCode.C then
+        eastSideCrytToggle = not eastSideCrytToggle
+        if eastSideCrytToggle then
+            previousSetter = selectedSetter
+            selectedSetter = Players:FindFirstChild("EastSideCryt") or Players:FindFirstChild("defensiveprotecter") or Players:FindFirstChild("B0CRUZ") or Players:FindFirstChild("AzurePlayer1")
+            StarterGui:SetCore("SendNotification", {
+                Title = "EastSideCryt Mode",
+                Text = "Setter: EastSideCryt",
+                Duration = 0.1,
+            })
+        else
+            selectedSetter = previousSetter
+            StarterGui:SetCore("SendNotification", {
+                Title = "EastSideCryt Mode",
+                Text = "Disabled",
+                Duration = 0.1,
+            })
+        end
     end
 end)
+
 -- Input handling for releasing the mouse
 UserInputService.InputEnded:Connect(function(input, gameProcessed)
     if gameProcessed or not scriptActive then return end
+
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         aimLock = false -- Disable aim lock when releasing left mouse
     end
 end)
+
 -- Bind updatePassChargeMeter to RenderStepped
 RunService:BindToRenderStep("UpdatePassChargeMeter", Enum.RenderPriority.Last.Value, function()
     updatePassChargeMeter()
 end)
+
 -- Create notification function
 local function notify(message)
     game.StarterGui:SetCore("SendNotification", {
@@ -174,12 +251,15 @@ local function notify(message)
         Duration = 0.1
     })
 end
+
 --------------------------------------------------------------------------------------------------------------------
+
 function ball()
     local target = nil
     local minDistance = math.huge
     local localPlayer = game.Players.LocalPlayer
     local ballFolder = workspace.BallFolderServer
+
     for _, b in pairs(ballFolder:GetChildren()) do
         if b:IsA("Model") and b:FindFirstChild("Ball") then
             local ballPosition = b.Ball.Position
@@ -190,31 +270,40 @@ function ball()
             end
         end
     end
+
     return target
 end
+
 --------------------------------------------------------------------------------------------------------------------
+
 local targets = {}
 local partvisual = {}
+
 local function LANDINGPOS(velocity: Vector3, position: Vector3)
     -- This function returns the landing position (when y=0)
     -- and the velocity at that moment, or nil/nil if no real solution.
+
     local gravity = workspace.Gravity  -- Roblox's default ~196.2
     local vy      = velocity.Y
     local y0      = position.Y
+
     -- We want to solve:  0.5 * g * t^2 - vy * t - y0 = 0
     -- Let a = 0.5*g, b = -vy, c = -y0
     local a = 0.5 * gravity
     local b = -vy
     local c = -y0
+
     -- Discriminant
     local disc = b*b - 4*a*c
     if disc < 0 then
         -- No real solutions => never hits y=0
         return nil, nil
     end
+
     local sqrtDisc = math.sqrt(disc)
     local t1 = (-b + sqrtDisc) / (2 * a)
     local t2 = (-b - sqrtDisc) / (2 * a)
+
     -- We want the physically valid (positive) time.
     -- If both are positive, pick the larger one (the "final" landing).
     local tLanding
@@ -228,17 +317,22 @@ local function LANDINGPOS(velocity: Vector3, position: Vector3)
         -- Both negative => landing was "in the past"
         return nil, nil
     end
+
     -- Now compute final position/velocity at tLanding
     local accel = Vector3.new(0, -gravity, 0)
+
     -- position(t) = position + velocity*t + 0.5*accel*t^2
     local landingPosition =
         position
         + velocity * tLanding
         + 0.5 * accel * (tLanding * tLanding)
+
     -- velocity(t) = velocity + accel*t
     local landingVelocity = velocity + accel * tLanding
+
     return landingPosition, landingVelocity
 end
+
 --[[ Example usage:
 local testVelocity = Vector3.new(10, 30, 0)  -- some initial velocity
 local testPosition = Vector3.new(0, 5, 0)   -- launched from y=5
@@ -250,10 +344,13 @@ else
     --print("Landing Velocity:", vel)
 end
 ]]
+
 --------------------------------------------------------------------------------------------------------------------
+
 local debounce = false
 local bounce = false
 local runLoop
+
 local part = Instance.new("Part")
 part.Size = Vector3.new(2.3, 2.3, 2.3)
 part.Shape = Enum.PartType.Ball
@@ -268,12 +365,15 @@ runLoop = game:GetService("RunService").RenderStepped:Connect(function(deltaTime
     local localPlayer = players.LocalPlayer
     local alive = workspace:WaitForChild("Alive Folder")
     local localmodel = alive:WaitForChild(localPlayer.Name)
+
     local spike = localmodel:WaitForChild("SpikeChargeMeter")
+
     if game.Players.LocalPlayer.Character.Humanoid.FloorMaterial == Enum.Material.Air then
         spike.Value = 500
     else
         spike.Value = 0
     end
+
 --[[
     game:GetService("Players").LocalPlayer.PlayerScripts.Stamina.Value = 100
     if getnearest() ~= nil and not readjusting then
@@ -282,13 +382,19 @@ runLoop = game:GetService("RunService").RenderStepped:Connect(function(deltaTime
         if value < 10 then
             value = 10
         end
+
         localmodel.PassChargeMeter.Value = value
     end
 ]]
+
 --------------------------------------------------------------------------------------------------------------------
+
     if ball() and autoEnabled then
+
         local MyDistance = (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - ball().Position).Magnitude
         local FinalPosition = LANDINGPOS(ball().Parent.Velocity.Value, ball().Position)
+
+
         local InHitbox
         if game.PlaceId == 17435076424 then -- Park Gym
             InHitbox = workspace.FunctionalityHitboxes.InHitbox
@@ -297,7 +403,10 @@ runLoop = game:GetService("RunService").RenderStepped:Connect(function(deltaTime
         else 
             InHitbox = workspace.InHitbox
         end
+
+
 --------------------------------------------------------------------------------------------------------------------
+
         local ballPosition = ball().Position
         local netPosition = net.Position
         local playerPosition = game.Players.LocalPlayer.Character.HumanoidRootPart.Position
@@ -306,6 +415,7 @@ runLoop = game:GetService("RunService").RenderStepped:Connect(function(deltaTime
         local function getSideOfNet()
             
             
+
             -- Assuming the net is oriented along the X-axis and splits the Z-axis
             if playerPosition.Z > netPosition.Z then
                 return "Right Side"
@@ -313,9 +423,11 @@ runLoop = game:GetService("RunService").RenderStepped:Connect(function(deltaTime
                 return "Left Side"
             end
         end
+
         -- Function to determine which side of the net the ball is on
         local function getBallSideOfNet()
       
+
             -- Assuming the net is oriented along the X-axis and splits the Z-axis
             if ballPosition.Z > netPosition.Z then
                 return "Right Side"
@@ -323,7 +435,9 @@ runLoop = game:GetService("RunService").RenderStepped:Connect(function(deltaTime
                 return "Left Side"
             end
         end
+
 --------------------------------------------------------------------------------------------------------------------
+
         local humanoidRootPart = game.Players.LocalPlayer.Character.HumanoidRootPart
         local humanoid = game.Players.LocalPlayer.Character.Humanoid
         local originalWalkSpeed = humanoid.WalkSpeed
@@ -331,17 +445,39 @@ runLoop = game:GetService("RunService").RenderStepped:Connect(function(deltaTime
         local ballVelocity = ball().Parent.Velocity.Value
         local ballVelocityMagnitude = ballVelocity.Magnitude
         
+
 --------------------------------------------------------------------------------------------------------------------
+
 --// Full Script
+
 -- (Everything above here is assumed to be the same in your environment,
 --  such as variable definitions for 'humanoid', 'humanoidRootPart', etc.)
+
+-- Example variable referencing your "in-court" Part.
+-- Adjust this path as needed for your own game hierarchy.
+
+-- Utility function to check if a world space position is within the bounds of a Part
+local function IsWithinHitbox(position, hitboxPart)
+    local relativePos = hitboxPart.CFrame:PointToObjectSpace(position)
+    local halfSize = hitboxPart.Size * 0.5
+    -- If X, Y, Z all lie within half the part size, the position is "inside" the part bounds
+    return (
+        math.abs(relativePos.X) <= halfSize.X 
+        and math.abs(relativePos.Y) <= halfSize.Y 
+        and math.abs(relativePos.Z) <= halfSize.Z
+    )
+end
+
 local function MoveTo(POS)
+    -- Example logic: if player is on solid ground, boost walk speed
     if humanoid.FloorMaterial ~= Enum.Material.Air then
         humanoid.WalkSpeed = 40
     end
+
     -- Check if the ball is on the same side of the net as the player
     if MyDistance <= 100 then
         humanoid:MoveTo(POS)
+
         -- Safely disconnect the MoveToFinished event each time
         local moveConn
         moveConn = humanoid.MoveToFinished:Connect(function(reached)
@@ -351,6 +487,7 @@ local function MoveTo(POS)
                 moveConn = nil
             end
         end)
+
         -- Check if the local player was the last to touch the ball
         local TouchCheck = true
         if TouchCheck then 
@@ -360,10 +497,12 @@ local function MoveTo(POS)
                 return 
             end
         end
+
         if MyDistance <= 60 then -- important: farther = more computational load
             local playerSpeed = humanoid.WalkSpeed
             local playerDistanceToFinal = (FinalPosition - rootPart.Position).Magnitude
             local timeToReachPlayer = playerDistanceToFinal / playerSpeed
+
             local timeToReachBall
             if ballVelocityMagnitude > 0 then
                 local ballDistanceToFinal = (FinalPosition - ball().Position).Magnitude
@@ -371,15 +510,27 @@ local function MoveTo(POS)
             else
                 timeToReachBall = math.huge -- If the ball is not moving, set time to infinity
             end
+
+            -- Check if we should do a simple 'LeftClick'
             if ballVelocityMagnitude > 30 and MyDistance <= 40 and getSideOfNet() == getBallSideOfNet() then
                 LeftClick()
             end
-            -- Only dive if you're far enough and timeToReachBall is critical
-            if timeToReachBall <= timeToReachPlayer and playerDistanceToFinal > 21.5 then
+
+           -- FULLCOURT --
+        -- 74.3 studs wide
+        -- 132.02 studs long
+
+            -- HALFCOURT --
+            -- 74.3 studs wide
+            -- 63 studs long (not half of 132.2 because of slight barrier)
+            -- 97 studs diagnole
+            if timeToReachBall <= timeToReachPlayer and playerDistanceToFinal > 20 and playerDistanceToFinal <= 48 and IsWithinHitbox(FinalPosition, InHitbox) 
+            then
                 if ballVelocityMagnitude > 80 and getSideOfNet() == getBallSideOfNet() then
                     humanoidRootPart.CFrame = CFrame.new(humanoidRootPart.Position, FinalPosition)
-                   -- task.wait(0.01) -- remove if hella skibidi
+                    -- task.wait(0.01) -- remove this if it causes too much visual "pop"
                     ActivateDive()
+                    --wait(0.4)
                 else
                     humanoid:MoveTo(FinalPosition)
                 end
@@ -387,6 +538,8 @@ local function MoveTo(POS)
         end
     end
 end
+
+
 --[[ 
     local ballVelocity = ball().Parent.Velocity.Value
     local ballVelocityMagnitude = ballVelocity.Magnitude
@@ -398,15 +551,20 @@ end
         MoveTo(FinalPosition)
     end
 ]]
+
 if FinalPosition then
     part.Position = FinalPosition
 end
+
 if hold then
     MoveTo(FinalPosition)
 end
+
     end
 end)
+
 --------------------------------------------------------------------------------------------------------------------
+
 game.UserInputService.InputBegan:connect(function(input)
     if input.KeyCode == Enum.KeyCode.End then
         pcall(function()
@@ -423,6 +581,8 @@ game.UserInputService.InputBegan:connect(function(input)
         end)
     end
 end)
+
+
 game.UserInputService.InputBegan:connect(function(input)
     if input.KeyCode == Enum.KeyCode.KeypadEight then
         if not debounce then
@@ -430,6 +590,7 @@ game.UserInputService.InputBegan:connect(function(input)
         end
     end
 end)
+
 game.UserInputService.InputBegan:connect(function(input)
     if input.KeyCode == Enum.KeyCode.KeypadNine then
         if not debounce then
@@ -445,6 +606,7 @@ game.UserInputService.InputBegan:connect(function(input)
         end
     end
 end)
+
 game.UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
         if not debounce then
@@ -452,6 +614,7 @@ game.UserInputService.InputBegan:Connect(function(input)
         end
     end
 end)
+
 game.UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
         if not debounce then
@@ -459,6 +622,7 @@ game.UserInputService.InputEnded:Connect(function(input)
         end
     end
 end)
+
 game.UserInputService.InputBegan:connect(function(input)
     if input.KeyCode == Enum.KeyCode.LeftAlt then
         if not debounce then
@@ -471,13 +635,31 @@ game.UserInputService.InputBegan:connect(function(input)
         end
     end
 end)
-game.UserInputService.InputBegan:connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+
+local ContextActionService = game:GetService("ContextActionService")
+local UserInputService = game:GetService("UserInputService")
+
+local function blockMouseButton2(actionName, inputState, inputObject)
+    if inputState == Enum.UserInputState.Begin then
         hold = true
-    end
-end)
-game.UserInputService.InputEnded:connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+    elseif inputState == Enum.UserInputState.End then
         hold = false
     end
+    return Enum.ContextActionResult.Sink -- Block the game from detecting the key
+end
+
+-- Bind the action to block MouseButton2 input
+ContextActionService:BindAction(
+    "BlockMouseButton2", -- Name of the action
+    blockMouseButton2,   -- Function to call
+    false,               -- Whether to allow mobile button UI (set false to block)
+    Enum.UserInputType.MouseButton2 -- The key to block
+)
+
+-- Unbind the action when the End key is pressed
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.End then
+        ContextActionService:UnbindAction("BlockMouseButton2")
+    end
 end)
+--------------------------------------------------------------------------------------------------------------------

@@ -360,6 +360,10 @@ part.Transparency = 0.3
 part.Material = Enum.Material.Neon
 part.CanCollide = false
 local hold = false
+
+local previousBallPosition = nil
+local previousBallVelocity = nil
+
 runLoop = game:GetService("RunService").RenderStepped:Connect(function(deltaTime)
     local players = game:GetService("Players")
     local localPlayer = players.LocalPlayer
@@ -374,192 +378,148 @@ runLoop = game:GetService("RunService").RenderStepped:Connect(function(deltaTime
         spike.Value = 0
     end
 
---[[
-    game:GetService("Players").LocalPlayer.PlayerScripts.Stamina.Value = 100
-    if getnearest() ~= nil and not readjusting then
-        local distance = getnearest()
-        local value = 0.936501 * distance + 33.02382
-        if value < 10 then
-            value = 10
-        end
-
-        localmodel.PassChargeMeter.Value = value
-    end
-]]
-
---------------------------------------------------------------------------------------------------------------------
-
     if ball() and autoEnabled then
+        local currentBallPosition = ball().Position
+        local currentBallVelocity = ball().Parent.Velocity.Value
 
-        local MyDistance = (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - ball().Position).Magnitude
-        local FinalPosition = LANDINGPOS(ball().Parent.Velocity.Value, ball().Position)
+        if currentBallPosition ~= previousBallPosition or currentBallVelocity ~= previousBallVelocity then
+            previousBallPosition = currentBallPosition
+            previousBallVelocity = currentBallVelocity
 
+            local MyDistance = (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - currentBallPosition).Magnitude
+            local FinalPosition = LANDINGPOS(currentBallVelocity, currentBallPosition)
 
-        local InHitbox
-        if game.PlaceId == 17435076424 then -- Park Gym
-            InHitbox = workspace.FunctionalityHitboxes.InHitbox
-        elseif game.PlaceId == 17516264439 then -- Haikyu Gym
-            InHitbox = workspace.InHitbox
-        else 
-            InHitbox = workspace.InHitbox
-        end
+            local InHitbox
+            if game.PlaceId == 17435076424 then -- Park Gym
+                InHitbox = workspace.FunctionalityHitboxes.InHitbox
+            elseif game.PlaceId == 17516264439 then -- Haikyu Gym
+                InHitbox = workspace.InHitbox
+            else 
+                InHitbox = workspace.InHitbox
+            end
 
-
---------------------------------------------------------------------------------------------------------------------
-
-        local ballPosition = ball().Position
-        local netPosition = net.Position
-        local playerPosition = game.Players.LocalPlayer.Character.HumanoidRootPart.Position
-        
-        -- Function to determine which side of the net the player is on
-        local function getSideOfNet()
+            local ballPosition = currentBallPosition
+            local netPosition = net.Position
+            local playerPosition = game.Players.LocalPlayer.Character.HumanoidRootPart.Position
             
-            
-
-            -- Assuming the net is oriented along the X-axis and splits the Z-axis
-            if playerPosition.Z > netPosition.Z then
-                return "Right Side"
-            else
-                return "Left Side"
-            end
-        end
-
-        -- Function to determine which side of the net the ball is on
-        local function getBallSideOfNet()
-      
-
-            -- Assuming the net is oriented along the X-axis and splits the Z-axis
-            if ballPosition.Z > netPosition.Z then
-                return "Right Side"
-            else
-                return "Left Side"
-            end
-        end
-
---------------------------------------------------------------------------------------------------------------------
-
-        local humanoidRootPart = game.Players.LocalPlayer.Character.HumanoidRootPart
-        local humanoid = game.Players.LocalPlayer.Character.Humanoid
-        local originalWalkSpeed = humanoid.WalkSpeed
-        local rootPart = game.Players.LocalPlayer.Character.HumanoidRootPart
-        local ballVelocity = ball().Parent.Velocity.Value
-        local ballVelocityMagnitude = ballVelocity.Magnitude
-        
-
---------------------------------------------------------------------------------------------------------------------
-
---// Full Script
-
--- (Everything above here is assumed to be the same in your environment,
---  such as variable definitions for 'humanoid', 'humanoidRootPart', etc.)
-
--- Example variable referencing your "in-court" Part.
--- Adjust this path as needed for your own game hierarchy.
-
--- Utility function to check if a world space position is within the bounds of a Part
-local function IsWithinHitbox(position, hitboxPart)
-    local relativePos = hitboxPart.CFrame:PointToObjectSpace(position)
-    local halfSize = hitboxPart.Size * 0.5
-    -- If X, Y, Z all lie within half the part size, the position is "inside" the part bounds
-    return (
-        math.abs(relativePos.X) <= halfSize.X 
-        and math.abs(relativePos.Y) <= halfSize.Y 
-        and math.abs(relativePos.Z) <= halfSize.Z
-    )
-end
-
-local function MoveTo(POS)
-    -- Example logic: if player is on solid ground, boost walk speed
-    if humanoid.FloorMaterial ~= Enum.Material.Air then
-        humanoid.WalkSpeed = 40
-    end
-
-    -- Check if the ball is on the same side of the net as the player
-    if MyDistance <= 100 then
-        humanoid:MoveTo(POS)
-
-        -- Safely disconnect the MoveToFinished event each time
-        local moveConn
-        moveConn = humanoid.MoveToFinished:Connect(function(reached)
-            humanoid.WalkSpeed = originalWalkSpeed
-            if moveConn then
-                moveConn:Disconnect()
-                moveConn = nil
-            end
-        end)
-
-        -- Check if the local player was the last to touch the ball
-        local TouchCheck = true
-        if TouchCheck then 
-            local lastTouchPlayer = workspace.BallFolderServer.ballEntity.Player.Value
-            if lastTouchPlayer == game.Players.LocalPlayer then
-                -- Skip diving and camera adjustments if the local player was the last toucher
-                return 
-            end
-        end
-
-        if MyDistance <= 60 then -- important: farther = more computational load
-            local playerSpeed = humanoid.WalkSpeed
-            local playerDistanceToFinal = (FinalPosition - rootPart.Position).Magnitude
-            local timeToReachPlayer = playerDistanceToFinal / playerSpeed
-
-            local timeToReachBall
-            if ballVelocityMagnitude > 0 then
-                local ballDistanceToFinal = (FinalPosition - ball().Position).Magnitude
-                timeToReachBall = ballDistanceToFinal / ballVelocityMagnitude
-            else
-                timeToReachBall = math.huge -- If the ball is not moving, set time to infinity
-            end
-
-            -- Check if we should do a simple 'LeftClick'
-            if ballVelocityMagnitude > 30 and MyDistance <= 40 and getSideOfNet() == getBallSideOfNet() then
-                LeftClick()
-            end
-
-           -- FULLCOURT --
-        -- 74.3 studs wide
-        -- 132.02 studs long
-
-            -- HALFCOURT --
-            -- 74.3 studs wide
-            -- 63 studs long (not half of 132.2 because of slight barrier)
-            -- 97 studs diagnole
-            if timeToReachBall <= timeToReachPlayer and playerDistanceToFinal > 20 and playerDistanceToFinal <= 48 and IsWithinHitbox(FinalPosition, InHitbox) 
-            then
-                if ballVelocityMagnitude > 80 and getSideOfNet() == getBallSideOfNet() then
-                    humanoidRootPart.CFrame = CFrame.new(humanoidRootPart.Position, FinalPosition)
-                    -- task.wait(0.01) -- remove this if it causes too much visual "pop"
-                    ActivateDive()
-                    --wait(0.4)
+            -- Function to determine which side of the net the player is on
+            local function getSideOfNet()
+                -- Assuming the net is oriented along the X-axis and splits the Z-axis
+                if playerPosition.Z > netPosition.Z then
+                    return "Right Side"
                 else
-                    humanoid:MoveTo(FinalPosition)
+                    return "Left Side"
                 end
             end
+
+            -- Function to determine which side of the net the ball is on
+            local function getBallSideOfNet()
+                -- Assuming the net is oriented along the X-axis and splits the Z-axis
+                if ballPosition.Z > netPosition.Z then
+                    return "Right Side"
+                else
+                    return "Left Side"
+                end
+            end
+
+            local humanoidRootPart = game.Players.LocalPlayer.Character.HumanoidRootPart
+            local humanoid = game.Players.LocalPlayer.Character.Humanoid
+            local originalWalkSpeed = humanoid.WalkSpeed
+            local rootPart = game.Players.LocalPlayer.Character.HumanoidRootPart
+            local ballVelocity = currentBallVelocity
+            local ballVelocityMagnitude = ballVelocity.Magnitude
+
+            -- Utility function to check if a world space position is within the bounds of a Part
+            local function IsWithinHitbox(position, hitboxPart)
+                local relativePos = hitboxPart.CFrame:PointToObjectSpace(position)
+                local halfSize = hitboxPart.Size * 0.5
+                -- If X, Y, Z all lie within half the part size, the position is "inside" the part bounds
+                return (
+                    math.abs(relativePos.X) <= halfSize.X 
+                    and math.abs(relativePos.Y) <= halfSize.Y 
+                    and math.abs(relativePos.Z) <= halfSize.Z
+                )
+            end
+
+            local function MoveTo(POS)
+                -- Example logic: if player is on solid ground, boost walk speed
+                if humanoid.FloorMaterial ~= Enum.Material.Air then
+                    humanoid.WalkSpeed = 40
+                end
+
+                -- Check if the ball is on the same side of the net as the player
+                if MyDistance <= 100 then
+                    humanoid:MoveTo(POS)
+
+                    -- Safely disconnect the MoveToFinished event each time
+                    local moveConn
+                    moveConn = humanoid.MoveToFinished:Connect(function(reached)
+                        humanoid.WalkSpeed = originalWalkSpeed
+                        if moveConn then
+                            moveConn:Disconnect()
+                            moveConn = nil
+                        end
+                    end)
+
+                    -- Check if the local player was the last to touch the ball
+                    local TouchCheck = true
+                    if TouchCheck then 
+                        local lastTouchPlayer = workspace.BallFolderServer.ballEntity.Player.Value
+                        if lastTouchPlayer == game.Players.LocalPlayer then
+                            -- Skip diving and camera adjustments if the local player was the last toucher
+                            return 
+                        end
+                    end
+
+                    if MyDistance <= 60 then -- important: farther = more computational load
+                        local playerSpeed = humanoid.WalkSpeed
+                        local playerDistanceToFinal = (FinalPosition - rootPart.Position).Magnitude
+                        local timeToReachPlayer = playerDistanceToFinal / playerSpeed
+
+                        local timeToReachBall
+                        if ballVelocityMagnitude > 0 then
+                            local ballDistanceToFinal = (FinalPosition - ball().Position).Magnitude
+                            timeToReachBall = ballDistanceToFinal / ballVelocityMagnitude
+                        else
+                            timeToReachBall = math.huge -- If the ball is not moving, set time to infinity
+                        end
+
+                        -- Check if we should do a simple 'LeftClick'
+                        if ballVelocityMagnitude > 30 and MyDistance <= 40 and getSideOfNet() == getBallSideOfNet() then
+                            LeftClick()
+                        end
+
+                        -- FULLCOURT --
+                        -- 74.3 studs wide
+                        -- 132.02 studs long
+
+                        -- HALFCOURT --
+                        -- 74.3 studs wide
+                        -- 63 studs long (not half of 132.2 because of slight barrier)
+                        -- 97 studs diagnole
+                        if timeToReachBall <= timeToReachPlayer and playerDistanceToFinal > 20 and playerDistanceToFinal <= 48 and IsWithinHitbox(FinalPosition, InHitbox) 
+                        then
+                            if ballVelocityMagnitude > 80 and getSideOfNet() == getBallSideOfNet() then
+                                humanoidRootPart.CFrame = CFrame.new(humanoidRootPart.Position, FinalPosition)
+                                -- task.wait(0.01) -- remove this if it causes too much visual "pop"
+                                ActivateDive()
+                                --wait(0.4)
+                            else
+                                humanoid:MoveTo(FinalPosition)
+                            end
+                        end
+                    end
+                end
+            end
+
+            if FinalPosition then
+                part.Position = FinalPosition
+            end
+
+            if hold then
+                MoveTo(FinalPosition)
+            end
         end
-    end
-end
-
-
---[[ 
-    local ballVelocity = ball().Parent.Velocity.Value
-    local ballVelocityMagnitude = ballVelocity.Magnitude
-    local rootPart = game.Players.LocalPlayer.Character.HumanoidRootPart
-    if ballVelocityMagnitude > 150 
-       and (FinalPosition - rootPart.Position).Magnitude <= 30 then
-        -- Check if the ball is moving super fast and is within 30 studs 
-        -- of FinalPosition
-        MoveTo(FinalPosition)
-    end
-]]
-
-if FinalPosition then
-    part.Position = FinalPosition
-end
-
-if hold then
-    MoveTo(FinalPosition)
-end
-
     end
 end)
 

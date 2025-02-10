@@ -694,7 +694,7 @@ local function AutoGK()
     table.insert(everything, steppedconnect)
 
     local inputconnect = game.UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.CapsLock then
+        if input.KeyCode == Enum.KeyCode.F1 then
             scripton = not scripton
         elseif input.KeyCode == Enum.KeyCode.End then
             scripton = false

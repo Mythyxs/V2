@@ -1,0 +1,70 @@
+local player = game.Players.LocalPlayer
+local char = workspace:FindFirstChild(player.Name)
+if not char then return end
+
+local humanoid = char:FindFirstChild("Humanoid")
+local properties = char:FindFirstChild("Properties")
+if not humanoid then return end
+if not properties then return end
+
+local RUNNING = true -- Controls script execution
+
+-- Multipliers, overrideable via _G variables
+local multipliers = {
+	Acceleration = _G.Acceleration or 1,
+	BoxoutSpeed = _G.BoxoutSpeed or 1,
+	GuardSpeed = _G.GuardSpeed or 1,
+	NormalSpeed = _G.NormalSpeed or 1.,
+	PostSpeed = _G.PostSpeed or 1,
+	ScreenSpeed = _G.ScreenSpeed or 1,
+	WalkDivider = _G.WalkDivider or 1,
+	-- WithBallSpeed = _G.WithBallSpeed or 1,  -- Uncomment if needed
+}
+
+-- Save original attribute values from the humanoid
+local originalValues = {}
+for attrName, multiplier in pairs(multipliers) do
+	local value = humanoid:GetAttribute(attrName)
+	if value then
+		originalValues[attrName] = value
+	end
+end
+
+-- Function to continuously update attributes based on multipliers and sprinting status
+local function updateAttributes()
+	while RUNNING do
+		local sprinting = properties:GetAttribute("Sprinting") == true
+		for attrName, multiplier in pairs(multipliers) do
+			local originalValue = originalValues[attrName]
+			if originalValue then
+				local newValue = originalValue * multiplier
+				if sprinting then
+					newValue = newValue + 1 -- Extra bonus when sprinting
+				end
+				humanoid:SetAttribute(attrName, newValue)
+			end
+		end
+		task.wait(0.1) -- Small delay to prevent overloading updates
+	end
+end
+
+-- Function to restore original attribute values
+local function restoreAttributes()
+	for attrName, originalValue in pairs(originalValues) do
+		humanoid:SetAttribute(attrName, originalValue)
+	end
+end
+
+-- Keybind (End key) to stop the script and restore original values
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.End then
+		RUNNING = false
+		restoreAttributes()
+		script:Destroy()
+	end
+end)
+
+-- Start the update loop
+task.spawn(updateAttributes)

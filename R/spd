@@ -1,3 +1,14 @@
+--[[
+_G.Acceleration = 1
+_G.BoxoutSpeed = 1
+_G.GuardSpeed = 1.1
+_G.NormalSpeed = 1.05
+_G.PostSpeed = 1
+_G.ScreenSpeed = 1.1
+_G.WalkDivider = 1
+_G.CanCollide = false -- this is noclip for screens very good false means its on
+--]]
+
 local player = game.Players.LocalPlayer
 local char = workspace:FindFirstChild(player.Name)
 if not char then return end
@@ -7,6 +18,28 @@ local properties = char:FindFirstChild("Properties")
 if not humanoid then return end
 if not properties then return end
 
+-- Set CollisionBox.CanCollide based on _G variable
+local collisionBox = char:FindFirstChild("CollisionBox")
+if collisionBox then
+    collisionBox.CanCollide = _G.CanCollide or false
+end
+
+-- Set other character properties
+local head = char:FindFirstChild("Head")
+if head then
+    head.CustomPhysicalProperties = PhysicalProperties.new(0.0001, 0.300000012, 0.5, 1, 1)
+end
+
+local alignPosition = char:FindFirstChild("AlignPosition")
+if alignPosition then
+    alignPosition.Responsiveness = 40
+end
+
+local alignOrientation = char:FindFirstChild("AlignOrientation")
+if alignOrientation then
+    alignOrientation.Responsiveness = 40
+end
+
 local RUNNING = true -- Controls script execution
 
 -- Multipliers, overrideable via _G variables
@@ -14,7 +47,7 @@ local multipliers = {
 	Acceleration = _G.Acceleration or 1,
 	BoxoutSpeed = _G.BoxoutSpeed or 1,
 	GuardSpeed = _G.GuardSpeed or 1,
-	NormalSpeed = _G.NormalSpeed or 1.,
+	NormalSpeed = _G.NormalSpeed or 1,
 	PostSpeed = _G.PostSpeed or 1,
 	ScreenSpeed = _G.ScreenSpeed or 1,
 	WalkDivider = _G.WalkDivider or 1,
@@ -44,7 +77,7 @@ local function updateAttributes()
 				humanoid:SetAttribute(attrName, newValue)
 			end
 		end
-		task.wait(0.1) -- Small delay to prevent overloading updates
+		task.wait(0.1)
 	end
 end
 

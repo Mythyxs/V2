@@ -170,7 +170,7 @@ local function AntiPhotonFlash()
 
     -- Handle End key press to stop the script
     userInputService.InputBegan:Connect(function(input, gameProcessed)
-        if input.KeyCode == Enum.KeyCode.End then
+        if input.KeyCode == Enum.KeyCode.ButtonR1 then
             isRunning = false
             if childAddedConnection then
                 childAddedConnection:Disconnect()
@@ -376,7 +376,7 @@ if FlowCheck then
 
     -- Key listener for END key
     userInputService.InputEnded:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.End then
+        if input.KeyCode == Enum.KeyCode.ButtonR1 then
             terminateScript()
         end
     end)
@@ -403,7 +403,7 @@ if FlowCheck then
 end
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
-
+--[[ **** HERE TOO ****
 
 local function AutoGK()
     local VirtualInputManager = Instance.new('VirtualInputManager')
@@ -602,6 +602,7 @@ local function AutoGK()
         local dot2 = relativeballpos2:Dot(rightvec)
         ]]--
        -- print(balldistance)
+       --[[ *** HERE ****
         local speed = XZ(target.Velocity).Magnitude
         --print(speed)
         local dotMin = 0.1
@@ -755,7 +756,7 @@ local function AutoGK()
 end
 
 spawn(AutoGK)
-
+--]]
 
 
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

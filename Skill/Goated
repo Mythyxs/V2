@@ -106,6 +106,23 @@ local function updateStamina()
     end
 end
 
+local userInputService = game:GetService("UserInputService")
+
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.ButtonB then
+        local args = {
+            [1] = {
+                [1] = "Kick",
+                [2] = CFrame.new(-20378.28125, 287.7028503417969, 643.2323608398438) * CFrame.Angles(1.5707963705062866, 0.015625635161995888 + 0.02, -1.5707963705062866),
+                [3] = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.CFrame
+            }
+        }
+
+        game:GetService("ReplicatedStorage").Remotes.Shooting:FireServer(unpack(args))
+    end
+end)
+
+
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
 -- AntiPhotonFlash Feature

@@ -1,0 +1,115 @@
+--[[
+    This script continuously enforces the following on every ball's Shadow (i.e. a child of
+    any ball named "/e ball" under workspace.Messi):
+
+        - Color: 255, 0, 0
+        - Transparency: 0.8
+        - Size: Vector3.new(0.05, 5, 5) 
+          (using a property-changed listener so that any game-driven changes are overridden immediately)
+
+    When you press the End key, the script:
+        - Stops updating
+        - Disconnects all property-change connections
+        - Resets all current shadows to the original Color (17, 17, 17) and Transparency (0.5)
+
+    Make sure workspace.Messi exists and that the balls have a child named "Shadow".
+]]--
+
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local running = true
+
+-- Desired properties
+local desiredColor = Color3.fromRGB(255, 0, 0)
+local desiredTransparency = 0.8
+local desiredSize = Vector3.new(0.05, 5, 5)
+
+-- Original properties (for resetting)
+local originalColor = Color3.fromRGB(17, 17, 17)
+local originalTransparency = 0.5
+
+-- Table to hold property-changed connections for each shadow
+local shadowSizeConnections = {}
+
+-- Function to attach a Size override listener to a given shadow part
+local function attachSizeOverride(shadow)
+    if shadowSizeConnections[shadow] then return end  -- Already attached
+
+    -- Connect to the shadow's "Size" property change event
+    local conn = shadow:GetPropertyChangedSignal("Size"):Connect(function()
+        if shadow.Size ~= desiredSize then
+            shadow.Size = desiredSize
+        end
+    end)
+    shadowSizeConnections[shadow] = conn
+    -- Immediately enforce the desired size
+    shadow.Size = desiredSize
+end
+
+-- Function to update all shadows for color, transparency, and attach the size override
+local function updateShadows()
+    for _, ball in ipairs(workspace.Messi:GetChildren()) do
+        if ball.Name == "/e ball" then
+            local shadow = ball:FindFirstChild("Shadow")
+            if shadow then
+                shadow.Color = desiredColor
+                shadow.Transparency = desiredTransparency
+                attachSizeOverride(shadow)
+            end
+        end
+    end
+end
+
+-- Function to disconnect all size override connections
+local function disconnectSizeOverrides()
+    for shadow, conn in pairs(shadowSizeConnections) do
+        if conn then
+            conn:Disconnect()
+        end
+    end
+    shadowSizeConnections = {} -- clear the table
+end
+
+-- Listen for new balls added to workspace.Messi so we can attach our overrides immediately
+local newBallConnection = workspace.Messi.ChildAdded:Connect(function(child)
+    if child.Name == "/e ball" then
+        local shadow = child:WaitForChild("Shadow", 5)
+        if shadow then
+            shadow.Color = desiredColor
+            shadow.Transparency = desiredTransparency
+            attachSizeOverride(shadow)
+        end
+    end
+end)
+
+-- Listen for the End key press to stop all functionality and reset properties
+local inputConnection
+inputConnection = UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
+    if gameProcessedEvent then return end
+    if input.KeyCode == Enum.KeyCode.End then
+        running = false
+        inputConnection:Disconnect()  -- stop listening for key presses
+        newBallConnection:Disconnect()  -- stop listening for new balls
+        disconnectSizeOverrides()         -- disconnect all size override listeners
+        
+        -- Reset all existing shadows to their original color and transparency
+        for _, ball in ipairs(workspace.Messi:GetChildren()) do
+            if ball.Name == "/e ball" then
+                local shadow = ball:FindFirstChild("Shadow")
+                if shadow then
+                    shadow.Color = originalColor
+                    shadow.Transparency = originalTransparency
+                    -- Optionally, if you know the original size the game expects,
+                    -- you could reset shadow.Size here as well.
+                end
+            end
+        end
+    end
+end)
+
+-- Main loop: continuously update shadows for color and transparency
+while running do
+    updateShadows()
+    RunService.Heartbeat:Wait()  -- update every frame for immediate effect
+end

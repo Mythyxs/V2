@@ -2,7 +2,7 @@
 -- Piecewise function for threshold based on ping
 -------------------
 local function getThreshold(ping)
-    -- Data points you provided (ping, threshold):
+    -- Data points (ping, threshold):
     -- 1) (35.02, 0.90)
     -- 2) (60.32, 0.72)
     -- 3) (103.39, 0.55)
@@ -10,57 +10,69 @@ local function getThreshold(ping)
     -- 5) (174.82, 0.35)
     -- 6) (250.55, 0.15)
     
-    -- If you want to "clamp" for very low or very high ping:
     if ping <= 35.02 then
         return 0.90
     elseif ping <= 60.32 then
-        -- Linear interpolation between (35.02, 0.90) and (60.32, 0.72)
         local x1, y1 = 35.02, 0.90
         local x2, y2 = 60.32, 0.72
         local slope   = (y2 - y1) / (x2 - x1)
-        local offset  = y1 - slope*x1
-        return slope*ping + offset
-
+        local offset  = y1 - slope * x1
+        return slope * ping + offset
     elseif ping <= 103.39 then
-        -- Linear interpolation between (60.32, 0.72) and (103.39, 0.55)
         local x1, y1 = 60.32, 0.72
         local x2, y2 = 103.39, 0.55
         local slope   = (y2 - y1) / (x2 - x1)
-        local offset  = y1 - slope*x1
-        return slope*ping + offset
-
+        local offset  = y1 - slope * x1
+        return slope * ping + offset
     elseif ping <= 166.75 then
-        -- Linear interpolation between (103.39, 0.55) and (166.75, 0.35)
         local x1, y1 = 103.39, 0.55
         local x2, y2 = 166.75, 0.35
         local slope   = (y2 - y1) / (x2 - x1)
-        local offset  = y1 - slope*x1
-        return slope*ping + offset
-
+        local offset  = y1 - slope * x1
+        return slope * ping + offset
     elseif ping <= 174.82 then
-        -- Both 166.75 and 174.82 have 0.35 => zero slope
-        -- We'll treat it as a flat line at 0.35
         return 0.35
-
     elseif ping <= 250.55 then
-        -- Linear interpolation between (174.82, 0.35) and (250.55, 0.15)
         local x1, y1 = 174.82, 0.35
         local x2, y2 = 250.55, 0.15
         local slope   = (y2 - y1) / (x2 - x1)
-        local offset  = y1 - slope*x1
-        return slope*ping + offset
+        local offset  = y1 - slope * x1
+        return slope * ping + offset
     else
-        -- Above 250.55 ms, clamp to 0.15
         return 0.15
     end
 end
 
 -------------------
--- Aimbot script
+-- Check if any specified animations are currently playing on a humanoid
 -------------------
+local function checkAnimations(animationIds, humanoid)
+    local playingTracks = humanoid:GetPlayingAnimationTracks()
+    local animationIdSet = {}
+    
+    -- Build a set of animation IDs for quick lookup
+    for i, animationId in ipairs(animationIds) do
+        if animationId and animationId ~= "" then
+            animationIdSet[animationId] = true
+        end
+    end
 
+    -- Check each playing track against the set
+    for i, track in ipairs(playingTracks) do
+        local currentAnimation = track.Animation
+        if currentAnimation and animationIdSet[currentAnimation.AnimationId] then
+            return true
+        end
+    end
+
+    return false
+end
+
+-------------------
+-- Aimbot script with post-hook timing adjustment
+-------------------
 local aimbotEnabled = false
--- Toggles the aimbot
+
 function autotime(state)
     aimbotEnabled = state
     if not aimbotEnabled then
@@ -69,18 +81,40 @@ function autotime(state)
     
     while aimbotEnabled do
         local currentPing = game.Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
-        
         local threshold = getThreshold(currentPing)
         
-        -- Check if we have the ShotMeterTiming object
-        local char = workspace[game.Players.LocalPlayer.Name]
-        local shotMeterValue = char.Properties.ShotMeter.Value
-        if shotMeterValue > threshold and shotMeterValue < 2 then
-            local args = {
-                [1] = "Shoot",
-                [2] = false
-            }
-            game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer(unpack(args))
+        local localPlayer = game.Players.LocalPlayer
+        local char = workspace[localPlayer.Name]
+        
+        if char and char:FindFirstChild("Properties") and char.Properties:FindFirstChild("ShotMeter") then
+            local shotMeterValue = char.Properties.ShotMeter.Value
+            
+            -- Get the humanoid to check for hook animations
+            local humanoid = char:FindFirstChild("Humanoid")
+            if humanoid then
+                local animationsFolder = humanoid:FindFirstChild("Animations")
+                if animationsFolder then
+                    -- Get the hook animation IDs from your character
+                    local hookAnimationIds = {
+                        animationsFolder.HookLeft and animationsFolder.HookLeft.AnimationId or "",
+                        animationsFolder.HookRight and animationsFolder.HookRight.AnimationId or ""
+                    }
+                    
+                    -- If a hook animation is playing, lower the threshold by 0.2
+                    if checkAnimations(hookAnimationIds, humanoid) then
+                        threshold = threshold - 0.1
+                    end
+                end
+            end
+            
+            -- If the shot meter value exceeds the (possibly adjusted) threshold and is below 2, fire the shot
+            if shotMeterValue > threshold and shotMeterValue < 2 then
+                local args = {
+                    [1] = "Shoot",
+                    [2] = false
+                }
+                game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer(unpack(args))
+            end
         end
         
         task.wait() -- short delay so we don’t spam
@@ -93,7 +127,7 @@ function terminateScript()
     script:Destroy()
 end
 
--- Press 'End' key to terminate
+-- Listen for the 'End' key to terminate the script
 game:GetService("UserInputService").InputEnded:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.End then
         terminateScript()

@@ -1,0 +1,320 @@
+repeat
+	task.wait()
+	until workspace:FindFirstChild(game.Players.LocalPlayer.Name)
+	local Character = workspace[game.Players.LocalPlayer.Name]
+	function calculateRelease(x)
+		return -0.005*x+1
+	end
+	
+	local goals = {}
+	
+	do
+		local a = workspace:GetDescendants()
+	
+		for x = 1, #a do
+			if (a[x]:IsA("UnionOperation") and a[x].Name == "NetCover") then
+				table.insert(goals, a[x])
+			end
+		end
+	end
+	local function checkAnimations(animationIds, humanoid)
+		local playingTracks = humanoid:GetPlayingAnimationTracks()
+	
+		-- Use a set to store unique animation IDs
+		local animationIdSet = {}
+		for _, animationId in ipairs(animationIds) do
+			animationIdSet[animationId] = true
+		end
+	
+		for _, track in ipairs(playingTracks) do
+			local currentAnimation = track.Animation
+			if animationIdSet[currentAnimation.AnimationId] then
+				return true
+			end
+		end
+	
+		return false
+	end
+	local isLobbing = false
+	function getclosetballhandler()
+		local target = nil
+		local distance = math.huge
+	
+		for i,v in next, game.Players:GetPlayers() do
+			if workspace:FindFirstChild(v.Name) then
+				if v and workspace[v.Name] and v~=game.Players.LocalPlayer and workspace[v.Name]:FindFirstChild("Head") and workspace[v.Name]:FindFirstChildOfClass("Humanoid") and workspace[v.Name]:FindFirstChildOfClass("Humanoid").Health>0 and workspace[v.Name]:FindFirstChild("Ball.Weld") then
+					local plrdist = game.Players.LocalPlayer:DistanceFromCharacter(workspace[v.Name]:FindFirstChildOfClass('Humanoid').RootPart.CFrame.p)
+					if plrdist < distance then
+						target = v
+						distance = plrdist
+					end
+				end
+			end
+		end
+	
+		if target ~= nil then
+	
+			local lobpass =
+			{
+				workspace[target.Name].Humanoid.Animations.RunLobPassRight.AnimationId,
+				workspace[target.Name].Humanoid.Animations.LobPass.AnimationId,
+				workspace[target.Name].Humanoid.Animations.RunLobPassLeft.AnimationId,
+			}
+			if checkAnimations(lobpass, workspace[target.Name]:FindFirstChildOfClass("Humanoid")) then
+				isLobbing = true
+			else
+				isLobbing = false
+			end
+	
+		end
+	
+		return target
+	end
+	
+	local function ball()
+		local nearest = nil
+		local shortest = math.huge
+	
+		pcall(function()
+			for _, obj in ipairs(workspace:GetChildren()) do
+				if obj:IsA("BasePart") and obj.Name == "Basketball" then
+					if obj.Properties:GetAttribute("Passing") == true then
+						local distance = (obj.Position - Character.Head.Position).Magnitude
+						if distance < shortest then
+							shortest = distance
+							nearest = obj
+						end
+					end
+				end
+			end
+		end)
+	
+		return nearest
+	end
+	
+	local function Goal()
+	
+		local root = Character.Head
+		local D = {}
+	
+		for _, goal in pairs(goals) do
+			table.insert(D, (root.Position - goal.Position).magnitude)
+		end
+	
+		local closegoal = math.min(unpack(D))
+	
+		for _, goal in pairs(goals) do
+			local d = (root.Position - goal.Position).magnitude
+	
+	
+			if (d == closegoal) then
+				return goal
+			end
+		end
+	end
+	
+	local function MoveTo(POS)
+		local humanoid = Character.Humanoid
+	
+	
+		humanoid:MoveTo(POS)
+	end
+	
+	local function XZ(V)
+		return Vector3.new(V.X, 0, V.Z)
+	end
+	
+	local debounce = true
+	local chop = false
+	local sprint = false
+	local bhop = false
+	local sprintdebounce = false
+	
+	local runLoop
+	local connections = {}
+	runLoop = game:GetService("RunService").RenderStepped:Connect(function(deltaTime) 
+		--pcall(function()
+				local goal = Goal()
+				local ball = ball()
+				--[[]]
+				if bhop then
+					if ball then
+						
+						local ballToPlayerDir = (XZ(Character.Head.Position - ball.Position)).unit
+						local velocity = ball.AssemblyLinearVelocity.unit
+						--print(ball.AssemblyLinearVelocity)
+						local dot = ballToPlayerDir:Dot(velocity)
+						if dot>0.9 then
+	
+							if isLobbing then
+								game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer("Sprint", true)
+								delay(0.5, function()
+									if not sprint then
+										game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer("Sprint", false)
+									end
+								end)
+								local args = {
+									[1] = "Jump"
+								}
+								game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer(unpack(args))
+							else
+								game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer("Sprint", false)
+								local args = {
+									[1] = "Steal"
+								}
+								
+								game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer(unpack(args))
+							end
+							
+						end
+					end
+				end
+	
+		--end)
+	end)
+	
+	table.insert(connections, runLoop)
+	
+	local asdasdasd = game.UserInputService.InputBegan:connect(function(input)
+		if input.KeyCode == Enum.KeyCode.DPadUp then
+			--[[
+			game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer("Sprint", true)
+			if Character.Properties:GetAttribute("Handle") == "L" then
+				local args = {
+					[1] = "Dribble Move",
+					[2] = "C"
+				}
+				
+				game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer(unpack(args))
+			else
+				local args = {
+					[1] = "Dribble Move",
+					[2] = "Z"
+				}
+				
+				game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer(unpack(args))
+			end
+			delay(0.5,function()
+				if not sprint then
+					game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer("Sprint", false)
+				end
+			end)
+			]]--
+			game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer("Sprint", true)
+			game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer("Post", true)
+			game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer("Shoot", true)
+			game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer("Shoot", false)
+			game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer("Shoot", true)
+			game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer("Shoot", false)
+			delay(1, function()
+				if not sprint then
+					game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer("Sprint", false)
+				end
+			end)
+			--game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer("Sprint", false)
+		end
+	end)
+	table.insert(connections, asdasdasd)
+	
+	local asdas2232dasd = game.UserInputService.InputBegan:connect(function(input)
+		if input.KeyCode == Enum.KeyCode.DPadRight then
+			game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer("Shoot", true)
+			game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer("Shoot", false)
+			game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer("Shoot", true)
+		end
+	end)
+	table.insert(connections, asdas2232dasd)
+	--[[
+	local asdas2232dasasd = game.UserInputService.InputBegan:connect(function(input)
+		if input.KeyCode == Enum.KeyCode.DPadUp then
+			if Character.Properties:GetAttribute("Handle") == "L" then
+				local args = {
+					[1] = "Dribble Move",
+					[2] = "VZ"
+				}
+				
+				game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer(unpack(args))
+			else
+				local args = {
+					[1] = "Dribble Move",
+					[2] = "VC"
+				}
+				
+				game:GetService("ReplicatedStorage"):WaitForChild("Game.Properties"):WaitForChild("ClientEvent"):FireServer(unpack(args))
+			end
+		end
+	end)
+	table.insert(connections, asdas2232dasasd)
+	]]--
+	
+	
+	local j = game.UserInputService.InputBegan:connect(function(input)
+		if input.KeyCode == Enum.KeyCode.End then
+			pcall(function()
+				Character.CollisionBox.CanCollide = true
+				Character.Humanoid:SetAttribute("Acceleration", 2)
+				for _, connection in ipairs(connections) do
+					connection:Disconnect()
+				end
+			end)
+		end
+	end)
+	
+	local t = game.UserInputService.InputBegan:connect(function(input)
+		if input.KeyCode == Enum.KeyCode.ButtonL2 then
+			chop=true
+		end
+	end)
+	
+	local y = game.UserInputService.InputEnded:connect(function(input)
+		if input.KeyCode == Enum.KeyCode.ButtonL2 then
+			chop=false
+		end
+	end)
+	
+	local byyy = game.UserInputService.InputBegan:connect(function(input)
+		if input.KeyCode == Enum.KeyCode.ButtonL1 then
+			bhop=true
+		end
+	end)
+	
+	local byyyy = game.UserInputService.InputEnded:connect(function(input)
+		if input.KeyCode == Enum.KeyCode.ButtonL1 then
+			bhop=false
+		end
+	end)
+	
+	local bedd = game.UserInputService.InputBegan:connect(function(input)
+		if input.KeyCode == Enum.KeyCode.ButtonR2 then
+			sprint=true
+		
+		end
+	end)
+	
+	local bedddy = game.UserInputService.InputEnded:connect(function(input)
+		if input.KeyCode == Enum.KeyCode.ButtonR2 then
+			sprint=false
+		end
+	end)
+	
+	local d = game.UserInputService.InputBegan:connect(function(input)
+		if input.KeyCode == Enum.KeyCode.KeypadSix then
+			debounce = false
+		end
+	end)
+	
+	local g = game.UserInputService.InputBegan:connect(function(input)
+		if input.KeyCode == Enum.KeyCode.KeypadFive then
+			debounce = true	
+		end
+	end)
+	
+	table.insert(connections, g)
+	table.insert(connections, d)
+	table.insert(connections, j)
+	table.insert(connections, bedddy)
+	table.insert(connections, bedd)
+	table.insert(connections, y)
+	table.insert(connections, t)
+	table.insert(connections, byyyy)
+	table.insert(connections, byyy)

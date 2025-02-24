@@ -1,4 +1,4 @@
--- Improved Script: Soccer Dribble & Defensive Automation
+** ELASTICO 3rd option ADDON **
 
 -- Services
 local Players = game:GetService("Players")

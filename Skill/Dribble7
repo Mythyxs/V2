@@ -1,4 +1,4 @@
-** ELASTICO 3rd option ADDON **
+--** ELASTICO 3rd option ADDON **
 
 -- Services
 local Players = game:GetService("Players")

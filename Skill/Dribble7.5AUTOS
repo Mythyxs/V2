@@ -1,4 +1,4 @@
---** THIS IS FOR AUTOS USE DRIBBLE7 **
+--** ELASTICO 3rd option ADDON **
 
 -- Services
 local Players = game:GetService("Players")
@@ -264,22 +264,21 @@ local function isInsidePart(part, pos)
 end
 
 -- Determines if the local player's HumanoidRootPart is within designated inbox parts
---[[
 local function isInsideInbox()
     local character = localPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then
         return false
     end
     local hrpPos = character.HumanoidRootPart.Position
-    local inbox1 = Workspace:FindFirstChild("Ignore") and Workspace.Ignore:FindFirstChild("Game Info") and Workspace.Ignore["Game Info"]:FindFirstChild("LARGE") and Workspace.Ignore["Game Info"].LARGE:FindFirstChild("Inbox 1 Large")
-    local inbox2 = Workspace:FindFirstChild("Ignore") and Workspace.Ignore["Game Info"].LARGE:FindFirstChild("Inbox 2 Large")
+    local inbox1 = Workspace:FindFirstChild("Ignore") and Workspace.Ignore:FindFirstChild("Game Info") and Workspace.Ignore["Game Info"]:FindFirstChild("Inbox 1")
+    local inbox2 = Workspace:FindFirstChild("Ignore") and Workspace.Ignore:FindFirstChild("Game Info") and Workspace.Ignore["Game Info"]:FindFirstChild("Inbox 2")
     if (inbox1 and isInsidePart(inbox1, hrpPos)) or (inbox2 and isInsidePart(inbox2, hrpPos)) then
         --print("Inside Inbox")
         return true
     end
     return false
 end
-]]
+
 -- Performs the dribble action based on cooldown flags and conditions
 local function dribble()
     local character = localPlayer.Character
@@ -302,7 +301,7 @@ local function dribble()
         local shootEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shooting")
         shootEvent:FireServer(unpack(argsShoot))
     elseif (hasDribbleCooldown or hasFeintCooldown or hasSkill or hasChargingKick or hasKickCooldown) then
-        if not hasElasticoCooldown then
+        if not hasElasticoCooldown and not isInsideInbox() then
             local argsElastico = {
                 {
                     "Mobility",

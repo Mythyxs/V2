@@ -1,4 +1,4 @@
-** THIS IS FOR AUTOS USE DRIBBLE7 **
+--** THIS IS FOR AUTOS USE DRIBBLE7 **
 
 -- Services
 local Players = game:GetService("Players")

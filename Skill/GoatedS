@@ -1,0 +1,744 @@
+-- Isolate the loadstring execution
+spawn(function()
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/Skill/Dribble"))() -- additional script
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Mythyxs/V2/refs/heads/main/Skill/GoalAim"))()
+        loadstring(game:HttpGet("https://pastebin.com/raw/fTgjaBZG"))() -- script with all the skills & speed multipliers
+    end)
+end)
+
+-- Function to check if the player "LeaveAVouch" is in the game
+local function isPlayerInGame(playerName)
+    local players = game:GetService("Players")
+    return players:FindFirstChild(playerName) ~= nil
+end
+
+-- Function to update Collider properties
+local function updateCollider(ball)
+    if not ball then return end
+
+    -- Find the regular Collider
+    local regularCollider = ball:FindFirstChild("Collider")
+    if not regularCollider or not regularCollider:IsA("BasePart") then return end
+
+    -- Check if "LeaveAVouch" is in the game
+    if isPlayerInGame("pr4ylow") then
+        regularCollider.Size = Vector3.new(3, 3, 3) -- Size for LeaveAVouch presence
+    else
+        regularCollider.Size = Vector3.new(3, 3, 3) -- Default size
+    end
+
+    -- Create or update the fake collider 'Collide2'
+    local collide2 = ball:FindFirstChild("Collide2") or Instance.new("Part", ball)
+    collide2.Name = "Collide2"
+    collide2.CastShadow = false
+    collide2.Color = Color3.new(117 / 255, 0, 0)
+    collide2.Material = Enum.Material.ForceField
+    collide2.Reflectance = 0
+    collide2.Transparency = 1
+    collide2.CanCollide = false
+    collide2.CanQuery = false
+    collide2.CanTouch = false
+    collide2.Anchored = regularCollider.Anchored
+    collide2.Shape = Enum.PartType.Block
+
+    -- Set Collide2's size to always be 10,10,10
+    collide2.Size = Vector3.new(3, 3, 3)
+    collide2.CFrame = regularCollider.CFrame
+
+    -- Create and configure the Attachment
+    local attachment = collide2:FindFirstChildOfClass("Attachment") or Instance.new("Attachment", collide2)
+    attachment.CFrame = CFrame.new(0, 0, 0)
+    attachment.Axis = Vector3.new(1, 0, 0)
+    attachment.SecondaryAxis = Vector3.new(0, 1, 0)
+end
+
+-- Function to process a single ball
+local function processBall(ball)
+    if ball.Name == "/e ball" then
+        updateCollider(ball)
+    end
+end
+
+-- Monitor Messi folder for new balls
+local messiFolder = workspace:FindFirstChild("Messi")
+if messiFolder then
+    -- Update existing balls
+    for _, model in pairs(messiFolder:GetChildren()) do
+        processBall(model)
+    end
+
+    -- Listen for new balls being added
+    messiFolder.ChildAdded:Connect(function(newBall)
+        processBall(newBall)
+    end)
+end
+
+-- Function to check if LocalPlayer has possession
+local function hasPossession()
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local localCharacter = workspace.Players:FindFirstChild(LocalPlayer.Name)
+    
+    if localCharacter and localCharacter:FindFirstChild("InstanceValue") then
+        local localInstanceFolder = localCharacter.InstanceValue
+        if localInstanceFolder:FindFirstChild("Possession") and localInstanceFolder.Possession.Value then
+            return true
+        end
+    end
+    return false
+end
+
+-- Function to handle stamina updates based on possession
+local function updateStamina()
+    local localPlayer = game.Players.LocalPlayer
+    local playerInfo = workspace.Players[localPlayer.Name].PlayerInfo
+
+    -- Ensure stamina does not go below 3
+    if playerInfo.Stamina.Value < 0 then
+        playerInfo.Stamina.Value = 0
+    end
+
+    -- Update stamina based on possession
+    if not hasPossession() then
+        -- Set stamina to 100 when not in possession
+        
+    end
+end
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- AntiPhotonFlash Feature
+local function AntiPhotonFlash()
+    local player = game:GetService("Players").LocalPlayer
+    local screenGuiName = "ScreenGui"
+    local userInputService = game:GetService("UserInputService")
+
+    local isRunning = true -- A flag to manage the script
+
+    -- Safely sets visibility or transparency
+    local function makeInvisible(instance)
+        pcall(function()
+            if instance:IsA("GuiObject") then
+                instance.Visible = false -- Make the object invisible
+            elseif instance:IsA("Frame") then
+                for _, child in pairs(instance:GetDescendants()) do
+                    if child:IsA("GuiObject") then
+                        child.Visible = false -- Make all children invisible
+                    end
+                end
+            elseif instance:IsA("TextLabel") or instance:IsA("ImageLabel") then
+                instance.BackgroundTransparency = 1 -- Fully transparent
+                instance.TextTransparency = 1 -- Hide text (if applicable)
+            end
+        end)
+    end
+
+    -- Makes the ScreenGui and all its descendants invisible
+    local function processScreenGui(screenGui)
+        if screenGui and screenGui:IsA("ScreenGui") then
+            screenGui.Enabled = false -- Disable the entire ScreenGui
+            for _, child in pairs(screenGui:GetDescendants()) do
+                makeInvisible(child)
+            end
+        end
+    end
+
+    -- Monitor the PlayerGui for new ScreenGui additions
+    local childAddedConnection = player.PlayerGui.ChildAdded:Connect(function(child)
+        if isRunning and child.Name == screenGuiName then
+            processScreenGui(child)
+        end
+    end)
+
+    -- Handle End key press to stop the script
+    userInputService.InputBegan:Connect(function(input, gameProcessed)
+        if input.KeyCode == Enum.KeyCode.End then
+            isRunning = false
+            if childAddedConnection then
+                childAddedConnection:Disconnect()
+            end
+        end
+    end)
+
+    -- Initial scan for existing ScreenGui
+    while isRunning do
+        local screenGui = player.PlayerGui:FindFirstChild(screenGuiName)
+        if screenGui then
+            processScreenGui(screenGui)
+        end
+        task.wait(0.01) -- Faster interval for initial scan
+    end
+end
+
+spawn(AntiPhotonFlash)
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+local FlowCheck = true 
+if FlowCheck then 
+    local workspace = game:GetService("Workspace")
+    local runService = game:GetService("RunService")
+    local userInputService = game:GetService("UserInputService")
+    local players = game:GetService("Players")
+
+    local playersFolder = workspace:WaitForChild("Players")
+    local running = true
+    local showBillboards = false
+
+    -- Function to create or update the Flow billboard above a player's head
+    local function createOrUpdateFlowBillboard(playerModel, flowValue)
+        local billboardGui = playerModel:FindFirstChild("FlowBillboardGui")
+
+        -- If the billboard doesn't exist, create it
+        if not billboardGui then
+            billboardGui = Instance.new("BillboardGui")
+            billboardGui.Name = "FlowBillboardGui"
+            billboardGui.Adornee = playerModel:WaitForChild("Head")
+            billboardGui.Size = UDim2.new(0, 100, 0, 10)
+            billboardGui.StudsOffset = Vector3.new(0, 5, 0) -- Slightly above head
+            billboardGui.AlwaysOnTop = true
+
+            -- Main background frame (white)
+            local backgroundFrame = Instance.new("Frame")
+            backgroundFrame.Name = "BackgroundFrame"
+            backgroundFrame.Size = UDim2.new(1, 0, 1, 0)
+            backgroundFrame.BackgroundColor3 = Color3.fromRGB(54, 57, 63) -- Discord dark theme background
+            backgroundFrame.BorderSizePixel = 0
+            backgroundFrame.Parent = billboardGui
+
+            -- Add rounded corners to background
+            local bgCorner = Instance.new("UICorner")
+            bgCorner.CornerRadius = UDim.new(0, 8)
+            bgCorner.Parent = backgroundFrame
+
+            -- Progress bar container
+            local progressContainer = Instance.new("Frame")
+            progressContainer.Name = "ProgressContainer"
+            progressContainer.Size = UDim2.new(0.7, 0, 0.8, 0)
+            progressContainer.Position = UDim2.new(0.05, 0, 0.1, 0)
+            progressContainer.BackgroundColor3 = Color3.fromRGB(47, 49, 54) -- Discord lighter dark for contrast
+            progressContainer.BorderSizePixel = 0
+            progressContainer.Parent = backgroundFrame
+
+            local containerCorner = Instance.new("UICorner")
+            containerCorner.CornerRadius = UDim.new(0, 8)
+            containerCorner.Parent = progressContainer
+
+            -- The fill frame for the progress bar
+            local fillFrame = Instance.new("Frame")
+            fillFrame.Name = "FillFrame"
+            fillFrame.Size = UDim2.new(0, 0, 1, 0)
+            fillFrame.Position = UDim2.new(0, 0, 0, 0)
+            fillFrame.BorderSizePixel = 0
+            fillFrame.Parent = progressContainer
+
+            local fillCorner = Instance.new("UICorner")
+            fillCorner.CornerRadius = UDim.new(0, 8)
+            fillCorner.Parent = fillFrame
+
+            -- Percentage label to the right
+            local percentageLabel = Instance.new("TextLabel")
+            percentageLabel.Name = "PercentageLabel"
+            percentageLabel.Size = UDim2.new(0.2, 0, 1, 0)
+            percentageLabel.Position = UDim2.new(0.77, 0, 0, 0)
+            percentageLabel.BackgroundTransparency = 1
+            percentageLabel.TextColor3 = Color3.new(1.000000, 1.000000, 1.000000)
+            percentageLabel.Font = Enum.Font.GothamSemibold
+            percentageLabel.TextScaled = true
+            percentageLabel.Text = "0%"
+            percentageLabel.Parent = backgroundFrame
+
+            billboardGui.Parent = playerModel
+        end
+
+        -- Update the billboard
+        local backgroundFrame = billboardGui:FindFirstChild("BackgroundFrame")
+        if backgroundFrame then
+            local progressContainer = backgroundFrame:FindFirstChild("ProgressContainer")
+                       local fillFrame = progressContainer and progressContainer:FindFirstChild("FillFrame")
+            local percentageLabel = backgroundFrame:FindFirstChild("PercentageLabel")
+
+            if fillFrame and percentageLabel then
+                local clampedFlow = math.clamp(flowValue, 0, 100)
+                local fillPercent = clampedFlow / 100
+                fillFrame.Size = UDim2.new(fillPercent, 0, 1, 0)
+                percentageLabel.Text = string.format("%d%%", math.floor(clampedFlow))
+
+                -- Check if the player has "Kasier Impact" or "Big Bang Drive" in their backpack or model
+                local player = players:GetPlayerFromCharacter(playerModel)
+                local hasKasierImpact = player and (
+                    (player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Kasier Impact")) or
+                    (workspace.Players:FindFirstChild(player.Name) and workspace.Players[player.Name]:FindFirstChild("Kasier Impact"))
+                )
+                local hasBigBangDrive = player and (
+                    (player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Big Bang Drive")) or
+                    (workspace.Players:FindFirstChild(player.Name) and workspace.Players[player.Name]:FindFirstChild("Big Bang Drive"))
+                )
+
+                -- Set fill color based on flow percentage and presence of "Kasier Impact" or "Big Bang Drive"
+                if clampedFlow == 100 then
+                    if hasKasierImpact then
+                        fillFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 139) -- Dark Blue
+                    elseif hasBigBangDrive then
+                        fillFrame.BackgroundColor3 = Color3.fromRGB(75, 0, 130) -- Dark Purple
+                    else
+                        fillFrame.BackgroundColor3 = Color3.new(0.407843, 0.101961, 0.113725) -- Dark Red
+                    end
+                elseif clampedFlow >= 80 then
+                    if hasKasierImpact then
+                        fillFrame.BackgroundColor3 = Color3.fromRGB(135, 206, 235) -- Sky Blue
+                    elseif hasBigBangDrive then
+                        fillFrame.BackgroundColor3 = Color3.fromRGB(148, 0, 211) -- Neon Purple
+                    else
+                        fillFrame.BackgroundColor3 = Color3.new(0.772549, 0.164706, 0.164706) -- Red
+                    end
+                elseif clampedFlow >= 50 then
+                    fillFrame.BackgroundColor3 = Color3.new(0.894118, 0.596078, 0.039216) -- Yellow
+                elseif clampedFlow <= 25 or 49 then
+                    fillFrame.BackgroundColor3 = Color3.new(0.074510, 0.741176, 0.074510) -- Green
+                else
+                    fillFrame.BackgroundColor3 = Color3.fromRGB(0, 170, 255) -- Default Blue
+                end
+            end
+        end
+    end
+
+    -- Function to destroy the Flow billboard if it exists
+    local function destroyFlowBillboard(playerModel)
+        local billboardGui = playerModel:FindFirstChild("FlowBillboardGui")
+        if billboardGui then
+            billboardGui:Destroy()
+        end
+    end
+
+    -- Update function run every frame
+    local function updateFlowBillboards()
+        if not running then return end
+        local localPlayer = players.LocalPlayer
+        local localPlayerCharacter = localPlayer and localPlayer.Character
+        local localPlayerHead = localPlayerCharacter and localPlayerCharacter:FindFirstChild("Head")
+        
+        if not localPlayerHead then return end
+
+        for _, playerModel in ipairs(playersFolder:GetChildren()) do
+            if playerModel:IsA("Model") and playerModel:FindFirstChild("Head") then
+                local playerInfo = playerModel:FindFirstChild("PlayerInfo")
+                if playerInfo then
+                    local flow = playerInfo:FindFirstChild("Flow")
+                    if flow and typeof(flow.Value) == "number" then
+                        local distance = (localPlayerHead.Position - playerModel.Head.Position).Magnitude
+                        if distance <= 250 then
+                            if showBillboards then
+                                createOrUpdateFlowBillboard(playerModel, flow.Value)
+                            else
+                                destroyFlowBillboard(playerModel)
+                            end
+                        else
+                            destroyFlowBillboard(playerModel)
+                        end
+                    else
+                        destroyFlowBillboard(playerModel)
+                    end
+                else
+                    destroyFlowBillboard(playerModel)
+                end
+            end
+        end
+    end
+
+    -- Termination function
+    local function terminateScript()
+        running = false
+        runService:UnbindFromRenderStep("UpdateFlowBillboards")
+        -- Destroy all billboards
+        for _, playerModel in ipairs(playersFolder:GetChildren()) do
+            destroyFlowBillboard(playerModel)
+        end
+    end
+
+    -- Key listener for END key
+    userInputService.InputEnded:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.End then
+            terminateScript()
+        end
+    end)
+
+    -- Key listener for SPACE key
+    userInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.ButtonL1 then
+            showBillboards = true
+        end
+    end)
+
+    userInputService.InputEnded:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.ButtonL1 then
+            showBillboards = false
+            -- Destroy all billboards when space is released
+            for _, playerModel in ipairs(playersFolder:GetChildren()) do
+                destroyFlowBillboard(playerModel)
+            end
+        end
+    end)
+
+    -- Start the update loop
+    runService:BindToRenderStep("UpdateFlowBillboards", Enum.RenderPriority.Last.Value, updateFlowBillboards)
+end
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+local function AutoGK()
+    local VirtualInputManager = Instance.new('VirtualInputManager')
+    local players = game.Players
+    local replicated = game.ReplicatedStorage
+    local player = players.LocalPlayer
+    local char = player.Character or player.CharacterAdded:Wait()
+    local Camera = workspace.CurrentCamera
+
+    local goals = {}
+
+    do
+        local a = workspace:GetDescendants()
+
+        for x = 1, #a do
+            if (a[x]:IsA("Part") and a[x].Name == "COLLIDABLE") then
+                table.insert(goals, a[x])
+            end
+        end
+    end
+
+    local function Goal()
+
+        local root = game.Players.LocalPlayer.Character.HumanoidRootPart
+        local D = {}
+    
+        for _, goal in pairs(goals) do
+            table.insert(D, (root.Position - goal.Position).magnitude)
+        end
+    
+        local closegoal = math.min(unpack(D))
+    
+        for _, goal in pairs(goals) do
+            local d = (root.Position - goal.Position).magnitude
+    
+    
+            if (d == closegoal) then
+                return goal
+            end
+        end
+    end
+    
+
+    local function ball()
+        local nearestball = nil
+        local shortestDistance = math.huge
+        
+
+        local messiFolder = workspace:FindFirstChild("Messi")
+        if not messiFolder then return nil end
+        pcall(function()
+            for _, obj in pairs(messiFolder:GetChildren()) do
+                local football = obj:FindFirstChild("HumanoidRootPart")
+
+                local currentVelocity = (football.Velocity).unit
+                local directionToOther = (football.Position - Goal().Position).unit
+
+                local isVelocityPointingAway = currentVelocity:Dot(directionToOther)
+                if football and not obj:FindFirstChild("InstanceValue"):FindFirstChild("Possession") and isVelocityPointingAway<=-0.75 then
+                    local balldistance = (player.Character.HumanoidRootPart.Position - football.Position).Magnitude
+                    if balldistance < shortestDistance then
+                        shortestDistance = balldistance
+                        nearestball = football
+                    end
+                end
+            end
+        end)
+        return nearestball
+    end
+
+    local function XZ(V)
+        return Vector3.new(V.X, 0, V.Z)
+    end
+
+    local part = Instance.new("Part")
+    part.Size = Vector3.new(2, 2, 2)
+    part.Shape = Enum.PartType.Ball
+    part.Anchored = true
+    part.Parent = workspace
+    part.Transparency = 1
+    part.Material = Enum.Material.Neon
+    part.CanCollide=false
+
+    local part2 = Instance.new("Part")
+    part2.Size = Vector3.new(2, 2, 2)
+    part2.Shape = Enum.PartType.Ball
+    part2.Anchored = true
+    part2.Parent = workspace
+    part2.Transparency = 1
+    part2.Material = Enum.Material.Neon
+    part2.Color = Color3.new(0.5,0,0)
+    part2.CanCollide=false
+
+
+    local function LANDINGPOS(velocity, position,multipler)
+        local acceleration = -workspace.Gravity
+        local timeToLand = (-velocity.y - math.sqrt(velocity.y * velocity.y - 4 * 0.5 * acceleration * position.y)) / (2 * 0.5 * acceleration)
+        local horizontalVelocity = Vector3.new(velocity.x, 0, velocity.z)
+        local landingPosition = position + horizontalVelocity * timeToLand + Vector3.new(0, -position.y, 0)
+        return landingPosition, horizontalVelocity * timeToLand
+    end    
+
+    local lastVelocity = Vector3.new(0,0,0)
+
+    local function timecalculator(acceleration, distance, velocity) 
+        return (-velocity+math.sqrt(2*acceleration*distance+velocity^2))/acceleration
+    end
+
+    local currentVector = "X"
+
+    local function sidewaysposition(finalpos)   
+        local multipler
+    
+        local offset = -8.5
+        --local ballPosition = ball().Position
+        local goal = Goal()
+        local goalPosition = goal.Position
+        local goalRotation = char.HumanoidRootPart.CFrame.LookVector
+        
+        if math.abs(goalRotation.X) > math.abs(goalRotation.Z) then
+    
+            if goalRotation.X < 0 then
+                offset = offset
+            elseif goalRotation.X > 0 then
+                offset = -offset
+            end
+            currentVector = "X"
+            -- Move side to side along the X-axis
+            return Vector3.new(goalPosition.X+offset, 0, finalpos.Z)
+        else
+    
+            if goalRotation.Z < 0 then
+                offset = offset
+            elseif goalRotation.Z > 0 then
+                offset = -offset
+            end
+            currentVector = "Z"
+            -- Move side to side along the Z-axis
+            return Vector3.new(finalpos.X, 0, goalPosition.Z+offset)
+        end
+    end
+
+    local function OneDKinematics(vector)
+        if currentVector == "X" then
+            return Vector3.new(vector.X, 0, 0)
+        end
+        return Vector3.new(0, 0, vector.z)
+    end
+    
+    local function OneDKinematics2(vector)
+        if currentVector == "X" then
+            return vector.X
+        end
+        return vector.z
+    end 
+
+    local function Test(velocity1, position)
+        local velocity = (velocity1)
+        local distance = (OneDKinematics(char.HumanoidRootPart.Position-position)).Magnitude
+        local horizontalVelocity = (OneDKinematics(velocity))
+        local speed = horizontalVelocity.Magnitude
+        local t = (distance/speed)
+        local landingPosition = position + (velocity)*t
+
+        local acceleration = XZ(velocity1)*t-lastVelocity
+        local landingPosition2 = position + acceleration*t
+
+        return landingPosition, XZ(velocity1)*t, landingPosition2
+    end    
+
+    local lastVelocity = Vector3.new(0,0,0)
+    local function ballDirection()
+        local target = ball()
+        if not target then return nil end
+        target.Parent.Collider.Size = Vector3.new(15,30,15)
+
+        local FinalPosition, FinalVelocity, FinalAccelerationPosition = Test(target.Velocity, target.Position)
+
+        local playerpos = char.HumanoidRootPart.Position
+        local ballpredict = FinalPosition
+        local acceleration = (FinalVelocity-lastVelocity)
+
+        local relativeballpos = (ballpredict - playerpos).unit
+        local rightvec = char.HumanoidRootPart.CFrame.RightVector
+        local dot = relativeballpos:Dot(rightvec)
+
+        part2.Position = FinalAccelerationPosition
+        part.Position = FinalPosition
+
+        local balldistance = ((FinalPosition-FinalAccelerationPosition)).Magnitude
+
+        --[[
+        local FinalPosition2 = target.Position+target.Velocity
+
+        local relativeballpos2 = (FinalPosition2 - playerpos).unit
+        local dot2 = relativeballpos2:Dot(rightvec)
+        ]]--
+       -- print(balldistance)
+        local speed = XZ(target.Velocity).Magnitude
+        --print(speed)
+        local dotMin = 0.1
+        --print(balldistance)
+        local condition = balldistance <= 35.5 or balldistance~=balldistance or speed>=110
+
+        if condition then
+            if dot > dotMin then
+                return "Right", FinalVelocity, FinalPosition, condition, FinalAccelerationPosition
+            elseif dot < -dotMin then
+                return "Left", FinalVelocity, FinalPosition, condition, FinalAccelerationPosition
+            end
+        end
+        return "Forward", FinalVelocity, FinalPosition, condition, FinalAccelerationPosition
+    end
+   
+    local followerPart =  Instance.new("Part")
+    followerPart.Size = Vector3.new(1, 1, 1)
+    followerPart.Shape = Enum.PartType.Block
+    followerPart.Anchored = true
+    followerPart.Parent = workspace
+    followerPart.Transparency = 1
+    followerPart.CanCollide=false
+    followerPart.Parent = workspace
+    followerPart.Name = game.Players.LocalPlayer.Name
+   
+    local scripton = true
+    local everything = {}
+    local function render()
+        if not scripton then return end
+        pcall(function()
+            if game.PlaceId == 11442626954 then
+    
+                local args = {
+                    [1] = {
+                        [1] = "Red",
+                        [2] = "GK"
+                    }
+                }
+                if game.Players.LocalPlayer.Team == nil then
+                    game:GetService("ReplicatedStorage"):FindFirstChild("Local Remotes").MatchInfo:FireServer(unpack(args))
+                    game:GetService("ReplicatedStorage"):FindFirstChild("Local Remotes").MatchInfo:FireServer(unpack(args))
+                    game:GetService("ReplicatedStorage"):FindFirstChild("Local Remotes").MatchInfo:FireServer(unpack(args))
+                    game:GetService("ReplicatedStorage"):FindFirstChild("Local Remotes").MatchInfo:FireServer(unpack(args))
+                    game:GetService("ReplicatedStorage"):FindFirstChild("Local Remotes").MatchInfo:FireServer(unpack(args))
+                    game:GetService("ReplicatedStorage"):FindFirstChild("Local Remotes").MatchInfo:FireServer(unpack(args))
+                    game:GetService("ReplicatedStorage"):FindFirstChild("Local Remotes").MatchInfo:FireServer(unpack(args))
+                    game:GetService("ReplicatedStorage"):FindFirstChild("Local Remotes").MatchInfo:FireServer(unpack(args))
+                    game:GetService("ReplicatedStorage"):FindFirstChild("Local Remotes").MatchInfo:FireServer(unpack(args))
+                    game:GetService("ReplicatedStorage"):FindFirstChild("Local Remotes").MatchInfo:FireServer(unpack(args))
+                    game:GetService("ReplicatedStorage"):FindFirstChild("Local Remotes").MatchInfo:FireServer(unpack(args))
+                    game:GetService("ReplicatedStorage"):FindFirstChild("Local Remotes").MatchInfo:FireServer(unpack(args))
+                    game:GetService("ReplicatedStorage"):FindFirstChild("Local Remotes").MatchInfo:FireServer(unpack(args))
+                    game:GetService("ReplicatedStorage"):FindFirstChild("Local Remotes").MatchInfo:FireServer(unpack(args))
+                    game:GetService("ReplicatedStorage"):FindFirstChild("Local Remotes").MatchInfo:FireServer(unpack(args))
+                    game:GetService("ReplicatedStorage"):FindFirstChild("Local Remotes").MatchInfo:FireServer(unpack(args))
+                    game:GetService("ReplicatedStorage"):FindFirstChild("Local Remotes").MatchInfo:FireServer(unpack(args))
+                end
+    
+            end
+        end)
+        --followerPart.Position = Vector3.new(game.Players.LocalPlayer.Character.HumanoidRootPart.Position.X,game.Players.LocalPlayer.Character.HumanoidRootPart.Position.Y+2.25,game.Players.LocalPlayer.Character.HumanoidRootPart.Position.Z)
+        local targetball = ball()
+        if not targetball then char.PlayerInfo.SpeedMultiplier.Value = 0 
+        --char.Humanoid:MoveTo(sidewaysposition(followerPart.Position)) 
+        return end
+        local balldistance = (char.HumanoidRootPart.Position - targetball.Position).Magnitude
+        local direction, FinalVelocity, FinalPosition, condition, FinalAccelerationPosition = ballDirection()
+
+        local FastEnough = targetball.Velocity.Magnitude>=80
+        --print(targetball.Velocity.Magnitude)
+        local bision = 70
+        if targetball.Velocity.Magnitude > 130 then
+            bision = 80
+        end
+        if direction and balldistance <= bision then
+            local args = {
+                [1] = {
+                    [1] = direction,
+                    [2] = char.HumanoidRootPart.CFrame
+                }
+            }
+            if FastEnough then  
+                if direction~="Forward" and condition then
+                    replicated:WaitForChild("Remotes"):WaitForChild("Dive"):FireServer(unpack(args))
+                end
+                if Goal() then
+                    local goal = Goal()
+                    followerPart.Position= Vector3.new(goal.Position.X,goal.Position.Y+4,goal.Position.Z)
+                    if FinalPosition.Y-5>followerPart.Position.Y then
+                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                        delay(0.1, function()
+                            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+                        end)
+                    end
+                end
+            end
+            char.PlayerInfo.SpeedMultiplier.Value = 5
+            char.Humanoid:MoveTo(sidewaysposition(FinalAccelerationPosition))
+        else
+            char.PlayerInfo.SpeedMultiplier.Value = 0
+        end
+        lastVelocity=FinalVelocity
+    end
+
+    local steppedconnect = game:GetService("RunService").RenderStepped:Connect(render)
+    table.insert(everything, steppedconnect)
+
+    local inputconnect = game.UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.LeftAlt then
+            scripton = not scripton
+        elseif input.KeyCode == Enum.KeyCode.End then
+            scripton = false
+            if part then
+                part:Destroy()
+                part2:Destroy()
+                followerPart:Destroy()
+            end
+
+            if game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid").AutoRotate == false then
+                game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid").AutoRotate = true
+            end
+            char.PlayerInfo.SpeedMultiplier.Value = 0
+            for _, conn in ipairs(everything) do
+                conn:Disconnect()
+            end
+            table.clear(everything)
+            
+        end
+    end)
+    table.insert(everything, inputconnect)
+
+ 
+    table.insert(everything, mConnection)
+end
+
+spawn(AutoGK)
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- Main loop to periodically update stamina, existing balls, and check for "LeaveAVouch"
+while true do
+    -- Update stamina based on possession
+    updateStamina()
+
+    -- Update all existing balls in Messi folder
+    if messiFolder then
+        for _, model in pairs(messiFolder:GetChildren()) do
+            processBall(model)
+        end
+    end
+
+    -- Slight delay to reduce resource usage
+    task.wait()
+end

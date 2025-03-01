@@ -1,0 +1,221 @@
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+
+local localPlayer = Players.LocalPlayer
+local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+
+-- Configurable parameters
+local MAX_DISTANCE = 100
+local BAR_WIDTH = 130        -- Width in pixels (slightly smaller than before)
+local BAR_HEIGHT = 12        -- Height in pixels (slightly smaller than before)
+local BAR_OFFSET_Y = 4  -- Vertical offset in studs (adjust this value to change how high above the head the bar appears)
+
+-- Tables for tracking healthbars and event connections for cleanup
+local healthbars = {}
+local connections = {}
+
+-- Helper function to determine the health color based on current health percentage.
+-- The color transitions from:
+--   Full Health (1.0): Dark Green        (0, 128, 0)
+--   75% Health:          Dark Yellow       (204, 204, 0)
+--   50% Health:          Dark Orange       (204, 102, 0)
+--   25% Health or lower: Dark Red          (153, 0, 0)
+local function getHealthColor(healthPercent)
+    if healthPercent >= 0.75 then
+        local t = (healthPercent - 0.75) / 0.25  -- t ranges from 0 (at 75%) to 1 (at 100%)
+        return Color3.fromRGB(204, 204, 0):Lerp(Color3.fromRGB(0, 128, 0), t)  -- Dark Yellow → Dark Green
+    elseif healthPercent >= 0.5 then
+        local t = (healthPercent - 0.5) / 0.25  -- t ranges from 0 (at 50%) to 1 (at 75%)
+        return Color3.fromRGB(204, 102, 0):Lerp(Color3.fromRGB(204, 204, 0), t)  -- Dark Orange → Dark Yellow
+    elseif healthPercent >= 0.25 then
+        local t = (healthPercent - 0.25) / 0.25  -- t ranges from 0 (at 25%) to 1 (at 50%)
+        return Color3.fromRGB(153, 0, 0):Lerp(Color3.fromRGB(204, 102, 0), t)  -- Dark Red → Dark Orange
+    else
+        return Color3.fromRGB(153, 0, 0)
+    end
+end
+
+-- Function: createHealthbar
+-- Creates an enhanced healthbar BillboardGui attached to the given humanoid's Head.
+local function createHealthbar(humanoid)
+    local characterModel = humanoid.Parent
+    if not characterModel then return end
+    if characterModel == localPlayer.Character then return end
+    if characterModel:FindFirstChild("EnhancedHealthBar") then return end
+    if characterModel:IsDescendantOf(Workspace.Effects.NPCS) then return end
+
+    local head = characterModel:FindFirstChild("Head")
+    if not head then return end
+
+    -- Create the BillboardGui that will host the healthbar
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Name = "EnhancedHealthBar"
+    billboardGui.Adornee = head
+    billboardGui.AlwaysOnTop = true
+    billboardGui.Size = UDim2.new(0, BAR_WIDTH, 0, BAR_HEIGHT)
+    billboardGui.StudsOffset = Vector3.new(0, BAR_OFFSET_Y, 0)
+    billboardGui.Parent = head
+
+    -- Container frame for the healthbar (background)
+    local container = Instance.new("Frame")
+    container.Name = "HealthBarContainer"
+    container.Size = UDim2.new(1, 0, 1, 0)
+    container.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    container.BackgroundTransparency = 0.3
+    container.BorderSizePixel = 0
+    container.Parent = billboardGui
+
+    -- Rounded corners for the container
+    local uicornerContainer = Instance.new("UICorner")
+    uicornerContainer.CornerRadius = UDim.new(0, 6)
+    uicornerContainer.Parent = container
+
+    -- Outline stroke for a crisp border
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 2
+    stroke.Color = Color3.new(0, 0, 0)
+    stroke.Parent = container
+    stroke.Transparency = 0.5
+
+    -- Health fill frame (foreground)
+    local fill = Instance.new("Frame")
+    fill.Name = "HealthFill"
+    fill.Size = UDim2.new(1, 0, 1, 0)  -- This will be updated based on health percentage
+    fill.BackgroundColor3 = Color3.fromRGB(0, 128, 0)  -- Starts as dark green at full health
+    fill.BorderSizePixel = 0
+    fill.Parent = container
+
+    -- Rounded corners for the health fill
+    local uicornerFill = Instance.new("UICorner")
+    uicornerFill.CornerRadius = UDim.new(0, 6)
+    uicornerFill.Parent = fill
+
+    -- Text label to display numerical health
+    local healthText = Instance.new("TextLabel")
+    healthText.Name = "HealthText"
+    healthText.Size = UDim2.new(1, 0, 1, 0)
+    healthText.BackgroundTransparency = 1
+    healthText.TextScaled = true
+    healthText.Font = Enum.Font.GothamBold
+    healthText.TextColor3 = Color3.new(1, 1, 1)
+    healthText.TextStrokeTransparency = 0
+    healthText.TextStrokeColor3 = Color3.new(0, 0, 0)
+    healthText.Parent = billboardGui
+
+    -- Function to update the healthbar display based on current health
+    local function updateHealth()
+        if humanoid and humanoid.Parent then
+            local healthPercent = humanoid.Health / humanoid.MaxHealth
+            fill.Size = UDim2.new(healthPercent, 0, 1, 0)
+            fill.BackgroundColor3 = getHealthColor(healthPercent)
+            healthText.Text = string.format("%d / %d", math.floor(humanoid.Health), math.floor(humanoid.MaxHealth))
+        end
+    end
+
+    updateHealth()
+
+    -- Connect the HealthChanged event to update the bar dynamically
+    local healthConn = humanoid.HealthChanged:Connect(updateHealth)
+    table.insert(connections, healthConn)
+
+    -- Clean up the healthbar if the model is removed from the game
+    local ancestryConn = characterModel.AncestryChanged:Connect(function(_, parent)
+        if not parent then
+            if healthbars[characterModel] then
+                if healthbars[characterModel].gui then
+                    healthbars[characterModel].gui:Destroy()
+                end
+                healthbars[characterModel] = nil
+            end
+        end
+    end)
+    table.insert(connections, ancestryConn)
+
+    -- Store the healthbar information for future updates/cleanup
+    healthbars[characterModel] = {
+        gui = billboardGui,
+        humanoid = humanoid,
+        healthConn = healthConn,
+        ancestryConn = ancestryConn
+    }
+end
+
+-- Function: removeHealthbar
+-- Disconnects events and destroys the healthbar for a given character model.
+local function removeHealthbar(characterModel)
+    local hb = healthbars[characterModel]
+    if hb then
+        if hb.gui then hb.gui:Destroy() end
+        if hb.healthConn then hb.healthConn:Disconnect() end
+        if hb.ancestryConn then hb.ancestryConn:Disconnect() end
+        healthbars[characterModel] = nil
+    end
+end
+
+-- Function: updateVisibility
+-- Checks the distance between the local player's head and each healthbar's target head.
+-- Enables the healthbar if within MAX_DISTANCE; otherwise, disables it.
+local function updateVisibility()
+    local localChar = localPlayer.Character
+    if not localChar then return end
+    local localHead = localChar:FindFirstChild("Head")
+    if not localHead then return end
+    local localPos = localHead.Position
+
+    for characterModel, hb in pairs(healthbars) do
+        local targetHead = characterModel:FindFirstChild("Head")
+        if targetHead then
+            local dist = (targetHead.Position - localPos).Magnitude
+            hb.gui.Enabled = (dist <= MAX_DISTANCE)
+        end
+    end
+end
+
+-- Connect updateVisibility to run every frame
+local heartbeatConn = RunService.Heartbeat:Connect(updateVisibility)
+table.insert(connections, heartbeatConn)
+
+-- Listen for new descendants to catch any new humanoids added to the Workspace
+local function onDescendantAdded(child)
+    if child:IsA("Humanoid") then
+        wait(0.1)
+        createHealthbar(child)
+    end
+end
+local descendantConn = Workspace.DescendantAdded:Connect(onDescendantAdded)
+table.insert(connections, descendantConn)
+
+-- Initial scan: create healthbars for any humanoid already present in the Workspace
+for _, instance in ipairs(Workspace:GetDescendants()) do
+    if instance:IsA("Humanoid") and not instance.Parent:IsDescendantOf(Workspace.Effects.NPCS) then
+        createHealthbar(instance)
+    end
+end
+
+-- Cleanup function: disconnects all events and removes all healthbars
+local function cleanup()
+    for _, conn in ipairs(connections) do
+        if conn.Connected then
+            conn:Disconnect()
+        end
+    end
+    for characterModel, hb in pairs(healthbars) do
+        if hb.gui then
+            hb.gui:Destroy()
+        end
+    end
+    healthbars = {}
+    connections = {}
+end
+
+-- Listen for the End key to terminate the script entirely
+local inputConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.End then
+        cleanup()
+    end
+end)
+table.insert(connections, inputConn)

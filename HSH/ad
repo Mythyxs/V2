@@ -1,52 +1,162 @@
+-- LocalPlayer reference
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
-local running = true
-local holdingE = false
+local workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
-local function isFastShotTypePlaying()
-    local character = game.Players.LocalPlayer.Character
-    if not character then return false end
+-- Variables to manage state and cleanup
+local connections = {}
+local scriptActive = true
+local defenseActive = false
 
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return false end
+-- Function to find the nearest player with the ball
+local function findNearestBallHandler()
+    local rootPart = Character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return nil end
 
-    for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
-        local animationId = track.Animation.AnimationId
-        if animationId == "rbxassetid://16153893144" or -- LayBaseRight
-           animationId == "rbxassetid://14161967779" or -- Layup Release Right
-           animationId == "rbxassetid://16154147726" or -- LayBaseLeft
-           animationId == "rbxassetid://15352588088" then -- Lay r left
-            return true
-        end
-    end
-    return false
-end
+    local nearestPlayer = nil
+    local shortestDistance = math.huge
 
-local function pressE()
-    if not running then return end
-    VirtualInputManager:SendKeyEvent(true, "E", false, game)
-    wait(0.01) -- Optional delay to prevent spamming
-    VirtualInputManager:SendKeyEvent(false, "E", false, game)
-end
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.E then
-        holdingE = true
-        while holdingE and running do
-            local shotType = isFastShotTypePlaying() and 0.3 or 0.35
-            task.wait(shotType)
-            if holdingE then
-                pressE()
+    for _, playerModel in pairs(workspace.Players:GetChildren()) do
+        if playerModel:GetAttribute("HasBall") then
+            local playerRoot = playerModel:FindFirstChild("HumanoidRootPart")
+            if playerRoot then
+                local distance = (playerRoot.Position - rootPart.Position).Magnitude
+                if distance < shortestDistance then
+                    shortestDistance = distance
+                    nearestPlayer = playerModel
+                end
             end
         end
-    elseif input.KeyCode == Enum.KeyCode.End then
-        running = false
     end
-end)
 
-UserInputService.InputEnded:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.E then
-        holdingE = false
+    return nearestPlayer
+end
+
+-- Function to calculate the guarding position
+local function calculateGuardPosition(ballHandlerRoot, targetRim)
+    local ballPosition = ballHandlerRoot.Position
+    local rimPosition = targetRim.Position
+
+    -- Calculate the direction vector from the rim to the ball position
+    local directionToRim = (rimPosition - ballPosition).Unit
+
+    -- Determine guard position based on 'Shooting' and 'Dunking' attributes
+    local guardPosition
+    if ballHandlerRoot.Parent:GetAttribute("Dunking") then
+        guardPosition = ballPosition + directionToRim * 8
+    elseif ballHandlerRoot.Parent:GetAttribute("Shooting") then
+        guardPosition = ballPosition + directionToRim * 2
+    else
+        guardPosition = ballPosition + directionToRim * 7
     end
-end)
+
+    return guardPosition
+end
+
+-- Determine the two closest rims
+local function determineClosestRims()
+    local rootPart = Character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return nil, nil end
+
+    local rims = workspace.Hoops:GetChildren()
+    table.sort(rims, function(a, b)
+        local distanceA = (a.Rim.Rim.Position - rootPart.Position).Magnitude
+        local distanceB = (b.Rim.Rim.Position - rootPart.Position).Magnitude
+        return distanceA < distanceB
+    end)
+
+    return rims[1].Rim.Rim, rims[2].Rim.Rim
+end
+
+-- Autodefense function: Guard based on nearest player with the ball
+local function autoFollow(targetPlayer)
+    if targetPlayer and targetPlayer:FindFirstChild("HumanoidRootPart") then
+        local targetRoot = targetPlayer.HumanoidRootPart
+        local humanoid = Character:FindFirstChild("Humanoid")
+        local rootPart = Character:FindFirstChild("HumanoidRootPart")
+        if humanoid and rootPart then
+            -- Check distance
+            local distance = (targetRoot.Position - rootPart.Position).Magnitude
+            if distance <= 15 then
+                -- Determine which rim to defend based on proximity
+                local rim1, rim2 = determineClosestRims()
+                local targetRim = (rim1 and rim2) and (rim1.Position - rootPart.Position).Magnitude < (rim2.Position - rootPart.Position).Magnitude and rim1 or rim2
+
+                -- Calculate the guard position
+                local guardPosition = calculateGuardPosition(targetRoot, targetRim)
+
+                -- Move the local player to the guard position
+                local direction = (guardPosition - rootPart.Position).Unit
+                humanoid:Move(Vector3.new(direction.X, 0, direction.Z))
+            end
+        end
+    end
+end
+
+-- Main loop
+local function mainLoop()
+    table.insert(connections, RunService.RenderStepped:Connect(function()
+        if not scriptActive then return end
+
+        -- Check if local player is playing defense
+        if defenseActive then
+            -- Find the nearest player with the basketball
+            local ballHandler = findNearestBallHandler()
+            if ballHandler and ballHandler ~= LocalPlayer then
+                autoFollow(ballHandler)
+            end
+        end
+    end))
+end
+
+-- Key listener for defense activation
+table.insert(connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    -- Check for left click or DPadUp
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.DPadUp then
+        defenseActive = true
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.G, false, nil)
+    end
+end))
+
+table.insert(connections, UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    -- Check for left click or DPadUp
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.DPadUp then
+        defenseActive = false
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.G, false, nil)
+    end
+end))
+
+-- Key listener for termination
+table.insert(connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    -- Check for the End key
+    if input.KeyCode == Enum.KeyCode.End then
+        scriptActive = false
+
+        -- Disconnect all connections
+        for _, connection in pairs(connections) do
+            if connection and connection.Disconnect then
+                connection:Disconnect()
+            end
+        end
+
+        -- Clear variables and objects
+        connections = nil
+        findNearestBallHandler = nil
+        isPlayingDefense = nil
+        autoFollow = nil
+    end
+end))
+
+-- Start the main loop
+mainLoop()

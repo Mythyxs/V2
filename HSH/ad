@@ -1,0 +1,52 @@
+local UserInputService = game:GetService("UserInputService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local running = true
+local holdingE = false
+
+local function isFastShotTypePlaying()
+    local character = game.Players.LocalPlayer.Character
+    if not character then return false end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return false end
+
+    for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+        local animationId = track.Animation.AnimationId
+        if animationId == "rbxassetid://16153893144" or -- LayBaseRight
+           animationId == "rbxassetid://14161967779" or -- Layup Release Right
+           animationId == "rbxassetid://16154147726" or -- LayBaseLeft
+           animationId == "rbxassetid://15352588088" then -- Lay r left
+            return true
+        end
+    end
+    return false
+end
+
+local function pressE()
+    if not running then return end
+    VirtualInputManager:SendKeyEvent(true, "E", false, game)
+    wait(0.01) -- Optional delay to prevent spamming
+    VirtualInputManager:SendKeyEvent(false, "E", false, game)
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.E then
+        holdingE = true
+        while holdingE and running do
+            local shotType = isFastShotTypePlaying() and 0.3 or 0.35
+            task.wait(shotType)
+            if holdingE then
+                pressE()
+            end
+        end
+    elseif input.KeyCode == Enum.KeyCode.End then
+        running = false
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.E then
+        holdingE = false
+    end
+end)

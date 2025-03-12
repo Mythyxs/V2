@@ -47,7 +47,7 @@ local running = true
 task.spawn(function()
     while running do
         for _, targetPlayer in ipairs(Players:GetPlayers()) do
-            if targetPlayer ~= localPlayer then
+            if targetPlayer ~= localPlayer and targetPlayer.Team ~= localPlayer.Team then
                 local targetCharacter = targetPlayer.Character
                 local localCharacter = localPlayer.Character
                 if targetCharacter and localCharacter and 

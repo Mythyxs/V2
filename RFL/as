@@ -1,0 +1,75 @@
+
+
+--[[
+    New Targeting System:
+    - Scans all players (except local player) 
+    - A valid target must:
+         • Be within 20 studs.
+         • Have a "Blocking" flag (in ReplicatedStorage.PlayerDataStorage) set to true.
+         • Additionally, the event will only fire if the target is within 10 studs.
+--]]
+
+-- Configuration constants
+local SCAN_RANGE = 20       -- Distance in studs within which players are scanned.
+local FIRE_DISTANCE = 8    -- 10 seemed a luh far
+
+-- Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local localPlayer = Players.LocalPlayer
+
+-- Function to check if a given player is blocking.
+local function isPlayerBlocking(targetPlayer)
+    if not targetPlayer or not targetPlayer.UserId then
+        return false
+    end
+
+    local playerDataStorage = ReplicatedStorage:FindFirstChild("PlayerDataStorage")
+    if playerDataStorage then
+        local userFolder = playerDataStorage:FindFirstChild(tostring(targetPlayer.UserId))
+        if userFolder then
+            local sessionData = userFolder:FindFirstChild("SessionData")
+            if sessionData then
+                local blockingFlag = sessionData:FindFirstChild("Blocking")
+                if blockingFlag and blockingFlag.Value == true then
+                    return true
+                end
+            end
+        end
+    end
+
+    return false
+end
+
+-- Main loop: Check all players every 0.1 seconds.
+local running = true
+task.spawn(function()
+    while running do
+        for _, targetPlayer in ipairs(Players:GetPlayers()) do
+            if targetPlayer ~= localPlayer then
+                local targetCharacter = targetPlayer.Character
+                local localCharacter = localPlayer.Character
+                if targetCharacter and localCharacter and 
+                   targetCharacter:FindFirstChild("HumanoidRootPart") and 
+                   localCharacter:FindFirstChild("HumanoidRootPart") then
+
+                    local distance = (localCharacter.HumanoidRootPart.Position - targetCharacter.HumanoidRootPart.Position).Magnitude
+                    if distance <= SCAN_RANGE then
+                        if isPlayerBlocking(targetPlayer) then
+                            if distance <= FIRE_DISTANCE then
+                                local args = {"Block"}
+                                ReplicatedStorage.Remotes.Hitbox["Events/Functions"].Event:FireServer(unpack(args))
+                                --print("Blocking event fired for player:", targetPlayer.Name)
+                            else
+                                -- Optional: Log when a target meets conditions but is still out of fire range.
+                               -- print("Target meets conditions but is too far (distance:", distance, "studs):", targetPlayer.Name)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        task.wait()
+    end
+end)

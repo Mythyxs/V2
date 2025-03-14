@@ -589,7 +589,7 @@ local function AutoGK()
         --print(speed)
         local dotMin = 0.1
         --print(balldistance)
-        local condition = balldistance <= 30 or balldistance~=balldistance or speed>=110 -- 35.5
+        local condition = balldistance <= 27 or balldistance~=balldistance or speed>=110 -- 35.5
 
         if condition then
             if dot > dotMin then

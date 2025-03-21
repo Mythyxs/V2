@@ -403,7 +403,7 @@ if FlowCheck then
 end
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
---[[ **** HERE TOO ****
+--**** HERE TOO ****
 
 local function AutoGK()
     local VirtualInputManager = Instance.new('VirtualInputManager')
@@ -602,7 +602,7 @@ local function AutoGK()
         local dot2 = relativeballpos2:Dot(rightvec)
         ]]--
        -- print(balldistance)
-       --[[ *** HERE ****
+       -- *** HERE ****
         local speed = XZ(target.Velocity).Magnitude
         --print(speed)
         local dotMin = 0.1
@@ -836,7 +836,7 @@ if AutoNagi then
 
             -- If the predicted position is above us by 15 studs and within 35 studs horizontally, and up to 75 studs vertically, trigger early
             if predictedHeightDiff >= 15 and predictedDistance <= 35 and predictedHeightDiff <= 75 then
-                print("Ball (predicted) above 15 studs and within 35 studs horizontally, up to 75 studs vertically at position:", predictedPosition)
+               -- print("Ball (predicted) above 15 studs and within 35 studs horizontally, up to 75 studs vertically at position:", predictedPosition)
                 skillRemote:FireServer(unpack(args))
             end
         end

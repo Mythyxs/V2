@@ -730,7 +730,7 @@ spawn(AutoGK)
 -- Main loop to periodically update stamina, existing balls, and check for "LeaveAVouch"
 while true do
     -- Update stamina based on possession
-    updateStamina()
+    --updateStamina()
 
     -- Update all existing balls in Messi folder
     if messiFolder then

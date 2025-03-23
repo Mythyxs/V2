@@ -1,0 +1,297 @@
+local function AutoGK()
+    ------------------------------------------------------------------------
+    -- SERVICES & REFERENCES
+    ------------------------------------------------------------------------
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local UserInputService = game:GetService("UserInputService")
+
+    local player = Players.LocalPlayer
+    local char = player.Character or player.CharacterAdded:Wait()
+
+    ------------------------------------------------------------------------
+    -- OPTIONAL: FIND "COLLIDABLE" PARTS IF YOU HAVE ANY (GOALS, etc.)
+    ------------------------------------------------------------------------
+
+
+    
+    local goals = {}
+    do
+        -- If your game has "COLLIDABLE" parts that represent goals or
+        -- some reference object, you can gather them here:
+        local allDescendants = workspace:GetDescendants()
+        for _, obj in ipairs(allDescendants) do
+            if obj:IsA("Part") and obj.Name == "COLLIDABLE" then
+                table.insert(goals, obj)
+            end
+        end
+    end
+
+    -- This function returns whichever "COLLIDABLE" is closest to you.
+    -- If your game truly doesn't have them, remove this function.
+    local function Goal()
+        local root = char:WaitForChild("HumanoidRootPart", 5)
+        if not root then return nil end
+
+        if #goals == 0 then
+            return nil
+        end
+
+        local closest = goals[1]
+        local closestDist = (root.Position - closest.Position).Magnitude
+        for i = 2, #goals do
+            local goalPart = goals[i]
+            local dist = (root.Position - goalPart.Position).Magnitude
+            if dist < closestDist then
+                closestDist = dist
+                closest = goalPart
+            end
+        end
+        return closest
+    end
+
+    ------------------------------------------------------------------------
+    -- FUNCTION: ball()
+    -- Return the nearest ball named "Hitbox" from workspace.Football.
+    ------------------------------------------------------------------------
+    local function ball()
+        local football = workspace:FindFirstChild("Football")
+        if not football then return nil end
+
+        local hitbox = football:FindFirstChild("Hitbox")
+        if not hitbox then return nil end
+
+        return hitbox
+    end
+
+    ------------------------------------------------------------------------
+    -- HELPER: Zero out the Y component of a Vector3 (XZ plane only)
+    ------------------------------------------------------------------------
+    local function XZ(vec)
+        return Vector3.new(vec.X, 0, vec.Z)
+    end
+
+    ------------------------------------------------------------------------
+    -- DEBUG PARTS to visualize predicted ball location
+    ------------------------------------------------------------------------
+    local part = Instance.new("Part")
+    part.Size = Vector3.new(2, 2, 2)
+    part.Shape = Enum.PartType.Ball
+    part.Anchored = true
+    part.Parent = workspace
+    part.Transparency = 1   -- Change to 0 if you want to see it
+    part.Material = Enum.Material.Neon
+    part.CanCollide = false
+
+    local part2 = Instance.new("Part")
+    part2.Size = Vector3.new(2, 2, 2)
+    part2.Shape = Enum.PartType.Ball
+    part2.Anchored = true
+    part2.Parent = workspace
+    part2.Transparency = 1  -- Change to 0 if you want to see it
+    part2.Material = Enum.Material.Neon
+    part2.Color = Color3.new(1, 0, 0)
+    part2.CanCollide = false
+
+    ------------------------------------------------------------------------
+    -- ADVANCED KINEMATIC HELPERS (Mocked from typical ballistic/curve code)
+    ------------------------------------------------------------------------
+    local GRAVITY = Vector3.new(0, -workspace.Gravity, 0)
+    local CURVE_ACCEL = 0  -- Increase to see lateral swerve in X or Z.
+
+    local function timeCalculator(ballPosition, ballVelocity, rootPosition)
+        local horizontalVelocity = Vector3.new(ballVelocity.X, 0, ballVelocity.Z)
+        local horizontalDist = (XZ(rootPosition - ballPosition)).Magnitude
+        local horizontalSpeed = horizontalVelocity.Magnitude
+
+        if horizontalSpeed < 1e-3 then
+            return 0
+        end
+
+        local t = horizontalDist / horizontalSpeed
+        return t
+    end
+
+    local function oneDKinematics(pos, vel, accel, t)
+        return pos + (vel * t) + (0.5 * accel * (t * t))
+    end
+
+    ------------------------------------------------------------------------
+    -- NEW PREDICTION: predictPosition(ballVelocity, ballPosition)
+    ------------------------------------------------------------------------
+    local function predictPosition(ballVelocity, ballPosition)
+        local t = timeCalculator(ballPosition, ballVelocity, char.HumanoidRootPart.Position)
+
+        local curveAccel = Vector3.new(CURVE_ACCEL, GRAVITY.Y, 0)
+        local futurePos = oneDKinematics(ballPosition, ballVelocity, curveAccel, t)
+
+        local horizAccel = Vector3.new(CURVE_ACCEL, 0, 0)
+        local horizontalPos = oneDKinematics(
+            ballPosition,
+            Vector3.new(ballVelocity.X, 0, ballVelocity.Z),
+            horizAccel,
+            t
+        )
+
+        return futurePos, horizontalPos
+    end
+
+    ------------------------------------------------------------------------
+    -- SCRIPT TOGGLE + RENDER LOGIC
+    ------------------------------------------------------------------------
+    local scripton = true
+    local connections = {}
+
+    local function onRenderStep()
+        if not scripton then return end
+
+        local theBall = ball()
+        if not theBall then
+            return
+        end
+
+        local dist = (char.HumanoidRootPart.Position - theBall.Position).Magnitude
+
+        -- Example threshold checks
+        if dist <= 60 and theBall.Velocity.Magnitude > 75 then -- dist 55 | velocity 80
+            --print("Ball velocity: " .. theBall.Velocity.Magnitude)
+            
+            -- Move to look at the ball
+            char.HumanoidRootPart.CFrame = CFrame.new(char.HumanoidRootPart.Position, theBall.Position)
+           -- task.wait(0.1) -- need delay for long ones
+            -- If the ball position is fairly high, we might jump first
+            local headPosition = char.Head.Position
+            local jumpThreshold = headPosition.Y + 4
+            if theBall.Position.Y > jumpThreshold then
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                task.wait(0.01)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+            end
+
+            -- Dive
+            VirtualInputManager:SendKeyEvent(true, "Q", false, game)
+            task.wait(0.1)
+            VirtualInputManager:SendKeyEvent(false, "Q", false, game)
+        end
+
+        -- Constantly set CanCollide off for the goals
+        local awayGoal = workspace:FindFirstChild("Goals") and workspace.Goals:FindFirstChild("Away")
+        local homeGoal = workspace:FindFirstChild("Goals") and workspace.Goals:FindFirstChild("Home")
+        if awayGoal then
+            awayGoal.CanCollide = false
+        end
+        if homeGoal then
+            homeGoal.CanCollide = false
+        end
+    end
+
+    local steppedConnect = RunService.RenderStepped:Connect(onRenderStep)
+    table.insert(connections, steppedConnect)
+
+    ------------------------------------------------------------------------
+    -- KEYBINDS:
+    --   Left Mouse Click => Toggle script on/off
+    --   End => Fully terminate
+    ------------------------------------------------------------------------
+    local inputConnect = UserInputService.InputBegan:Connect(function(input, gp)
+        if gp then return end
+
+        if input.KeyCode == Enum.KeyCode.LeftAlt then
+            scripton = not scripton
+            if scripton then
+                game.StarterGui:SetCore("SendNotification", {
+                    Title = "AutoGK";
+                    Text = "ON";
+                    Duration = 0.1;
+                })
+            else
+                game.StarterGui:SetCore("SendNotification", {
+                    Title = "AutoGK";
+                    Text = "OFF";
+                    Duration = 0.1;
+                })
+            end
+
+        elseif input.KeyCode == Enum.KeyCode.End then
+            scripton = false
+
+            -- Destroy debug parts
+            if part then part:Destroy() end
+            if part2 then part2:Destroy() end
+
+            -- Disconnect all connections
+            for _, conn in ipairs(connections) do
+                conn:Disconnect()
+            end
+            table.clear(connections)
+
+            game.StarterGui:SetCore("SendNotification", {
+                Title = "AutoGK";
+                Text = "Terminated.";
+                Duration = 0.1;
+            })
+        end
+    end)
+    table.insert(connections, inputConnect)
+end
+
+-- Run in separate thread
+spawn(AutoGK)
+
+local ContextActionService = game:GetService("ContextActionService")
+local UserInputService = game:GetService("UserInputService")
+
+local function blockMouseButton2(actionName, inputState, inputObject)
+    if inputState == Enum.UserInputState.Begin then
+        hold = true
+    elseif inputState == Enum.UserInputState.End then
+        hold = false
+    end
+    return Enum.ContextActionResult.Sink -- Block the game from detecting the key
+end
+
+-- Continuously look at the player who has the ball while holding MouseButton2
+local function lookAtPlayerWithBall()
+    while hold do
+        local localPlayer = game:GetService("Players").LocalPlayer
+        local playerModel = localPlayer.Character
+        if not playerModel or not playerModel:FindFirstChild("HumanoidRootPart") then return end
+
+        for _, player in pairs(workspace:GetChildren()) do
+            if player:IsA("Model") and player ~= playerModel and player:FindFirstChild("Values") then
+                local hasBall = player.Values:FindFirstChild("HasBall")
+                local humanoidRootPart = player:FindFirstChild("HumanoidRootPart")
+
+                if hasBall and humanoidRootPart and hasBall.Value then
+                    local predictedPos = humanoidRootPart.Position
+                    playerModel.HumanoidRootPart.CFrame = CFrame.new(playerModel.HumanoidRootPart.Position, predictedPos)
+                    break
+                end
+            end
+        end
+        wait() -- Yield to prevent freezing
+    end
+end
+
+-- Bind the action to block MouseButton2 input
+ContextActionService:BindAction(
+    "BlockMouseButton2", -- Name of the action
+    blockMouseButton2,   -- Function to call
+    false,               -- Whether to allow mobile button UI (set false to block)
+    Enum.UserInputType.MouseButton2 -- The key to block
+)
+
+-- Start looking at the player with the ball when MouseButton2 is held
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        spawn(lookAtPlayerWithBall)
+    end
+end)
+
+-- Unbind the action when the End key is pressed
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.End then
+        ContextActionService:UnbindAction("BlockMouseButton2")
+    end
+end)

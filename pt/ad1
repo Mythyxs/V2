@@ -1,0 +1,172 @@
+local AutoDefense = true
+if AutoDefense then
+    -- Services
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local UserInputService = game:GetService("UserInputService")
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+    local Workspace = game:GetService("Workspace")
+    local LocalPlayer = Players.LocalPlayer
+    local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+
+    -- Variables
+    local connections = {}
+    local scriptActive = true
+    local rightClickHeld = false
+
+    -- Ball movement tracking
+    local previousBallPosition = nil
+    local lastBallUpdateTime = tick()
+
+    -- Get the defending goal based on team
+    local function getDefendingGoal()
+        local team = LocalPlayer.Team and LocalPlayer.Team.Name
+        if team == "Spectator" or team == "Home" then
+            return Workspace.Pitch.Goals.Home.Detection
+        elseif team == "Away" then
+            return Workspace.Pitch.Goals.Away.Detection
+        end
+        return nil
+    end
+
+    -- Find the nearest ball
+    local function getNearestBall()
+        local ballsFolder = Workspace:FindFirstChild("Balls")
+        if not ballsFolder then
+            warn("Balls folder not found.")
+            return nil
+        end
+
+        local character = LocalPlayer.Character
+        if not character then return nil end
+
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return nil end
+
+        local nearestBall = nil
+        local shortestDistance = math.huge
+
+        for _, ball in ipairs(ballsFolder:GetChildren()) do
+            if ball:IsA("BasePart") and ball.Name == "Ball" then
+                local distance = (ball.Position - rootPart.Position).Magnitude
+                if distance < shortestDistance then
+                    shortestDistance = distance
+                    nearestBall = ball
+                end
+            end
+        end
+
+        return nearestBall, shortestDistance
+    end
+
+    -- Calculate the best defensive position between the ball and goal
+    local function calculateDefensivePosition(targetBall, targetGoal)
+        if not targetBall or not targetGoal then return nil end
+
+        -- Ball position and velocity
+        local ballPosition = targetBall.Position
+        local ballVelocity = targetBall.Velocity
+        local predictionTime = 0.7 -- Predict 0.5 seconds ahead
+        local predictedBallPosition = ballPosition + (ballVelocity * predictionTime)
+
+        -- Calculate a point between the predicted ball position and the goal
+        local directionToGoal = (targetGoal.Position - predictedBallPosition).Unit
+        local defensivePosition = predictedBallPosition + (directionToGoal * 1) -- Adjust distance if needed
+
+        return defensivePosition, predictedBallPosition
+    end
+
+    -- Auto Jump logic
+    local function autoJump(targetBall, predictedPos, distance)
+        if not Character or not Character:FindFirstChild("Head") then return end
+
+        local ballVelocity = targetBall.Velocity.Magnitude
+        if rightClickHeld and distance <= 60 and ballVelocity > 20 then
+            local headPosition = Character.Head.Position
+            local jumpThreshold = headPosition.Y + 1.5
+
+            if predictedPos.Y > jumpThreshold then
+                task.wait(0.1) -- Delay to avoid pre-jumping
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                task.wait(0.01)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+            end
+        end
+    end
+
+    -- Move to defensive position
+    local function autoDefend()
+        local targetGoal = getDefendingGoal()
+        local targetBall, distance = getNearestBall()
+        if not (targetGoal and targetBall) then return end
+
+        -- Predict ball movement
+        local now = tick()
+        local dt = now - lastBallUpdateTime
+        lastBallUpdateTime = now
+
+        local currentBallPosition = targetBall.Position
+        local computedVelocity = Vector3.new(0, 0, 0)
+
+        if previousBallPosition then
+            computedVelocity = (currentBallPosition - previousBallPosition) / dt
+        end
+        previousBallPosition = currentBallPosition
+
+        -- Move to best defensive position
+        local humanoid = Character:FindFirstChild("Humanoid")
+        local rootPart = Character:FindFirstChild("HumanoidRootPart")
+
+        if humanoid and rootPart then
+            local defensivePosition, predictedBallPosition = calculateDefensivePosition(targetBall, targetGoal)
+            if defensivePosition then
+                local moveDirection = (defensivePosition - rootPart.Position).Unit
+                humanoid:Move(Vector3.new(moveDirection.X, 0, moveDirection.Z))
+
+                -- Check if a jump is needed
+                autoJump(targetBall, predictedBallPosition, distance)
+            end
+        end
+    end
+
+    -- Main loop
+    local function mainLoop()
+        table.insert(connections, RunService.RenderStepped:Connect(function()
+            if scriptActive and rightClickHeld then
+                autoDefend()
+            end
+        end))
+    end
+
+    -- Detect Mouse Button 2 (Right Click) Hold or DPadLeft
+    table.insert(connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonR2 then
+            rightClickHeld = true
+        end
+    end))
+
+    table.insert(connections, UserInputService.InputEnded:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonR2 then
+            rightClickHeld = false
+        end
+    end))
+
+    -- Key listener for terminating script
+    table.insert(connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.End then
+            scriptActive = false
+            for _, connection in pairs(connections) do
+                if connection and connection.Disconnect then
+                    connection:Disconnect()
+                end
+            end
+            connections = nil
+        end
+    end))
+
+    -- Start the main loop
+    mainLoop()
+end

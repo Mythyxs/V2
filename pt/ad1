@@ -46,12 +46,15 @@ if AutoDefense then
         local nearestBall = nil
         local shortestDistance = math.huge
 
-        for _, ball in ipairs(ballsFolder:GetChildren()) do
-            if ball:IsA("BasePart") and ball.Name == "Ball" then
-                local distance = (ball.Position - rootPart.Position).Magnitude
-                if distance < shortestDistance then
-                    shortestDistance = distance
-                    nearestBall = ball
+        for _, ballModel in ipairs(ballsFolder:GetChildren()) do
+            if ballModel.Name == "Ball" and ballModel:IsA("Model") then
+                local ballBase = ballModel:FindFirstChild("Base")
+                if ballBase and ballBase:IsA("BasePart") then
+                    local distance = (ballBase.Position - rootPart.Position).Magnitude
+                    if distance < shortestDistance then
+                        shortestDistance = distance
+                        nearestBall = ballBase
+                    end
                 end
             end
         end

@@ -165,7 +165,7 @@ local function AutoGK()
     local inputBeganConnect = UserInputService.InputBegan:Connect(function(input, gp)
         if gp then return end
 
-        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.DPadRight then
+        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonR2 then
             holdingMB2 = true
         elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
             holdingMB1 = true
@@ -186,7 +186,7 @@ local function AutoGK()
     local inputEndedConnect = UserInputService.InputEnded:Connect(function(input, gp)
         if gp then return end
 
-        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.DPadRight then
+        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonR2 then
             holdingMB2 = false
         elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
             holdingMB1 = false

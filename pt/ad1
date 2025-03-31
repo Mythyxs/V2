@@ -13,7 +13,6 @@ if AutoDefense then
     local connections = {}
     local scriptActive = true
     local rightClickHeld = false
-    local dpadDownHeld = false
 
     -- Ball movement tracking
     local previousBallPosition = nil
@@ -85,7 +84,7 @@ if AutoDefense then
         if not Character or not Character:FindFirstChild("Head") then return end
 
         local ballVelocity = targetBall.Velocity.Magnitude
-        if (rightClickHeld or dpadDownHeld) and distance <= 60 and ballVelocity > 20 then
+        if rightClickHeld and distance <= 60 and ballVelocity > 20 then
             local headPosition = Character.Head.Position
             local jumpThreshold = headPosition.Y + 1.5
 
@@ -136,19 +135,17 @@ if AutoDefense then
     -- Main loop
     local function mainLoop()
         table.insert(connections, RunService.RenderStepped:Connect(function()
-            if scriptActive and (rightClickHeld or dpadDownHeld) then
+            if scriptActive and rightClickHeld then
                 autoDefend()
             end
         end))
     end
 
-    -- Detect Mouse Button 2 (Right Click) Hold or DPadDown
+    -- Detect Mouse Button 2 (Right Click) Hold or DPadLeft
     table.insert(connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
         if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonR2 then
             rightClickHeld = true
-        elseif input.KeyCode == Enum.KeyCode.DPadDown then
-            dpadDownHeld = true
         end
     end))
 
@@ -156,8 +153,6 @@ if AutoDefense then
         if gameProcessed then return end
         if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonR2 then
             rightClickHeld = false
-        elseif input.KeyCode == Enum.KeyCode.DPadDown then
-            dpadDownHeld = false
         end
     end))
 

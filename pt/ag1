@@ -1,0 +1,199 @@
+local function AutoGK()
+    ------------------------------------------------------------------------
+    -- SERVICES & REFERENCES
+    ------------------------------------------------------------------------
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local UserInputService = game:GetService("UserInputService")
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+
+    local player = Players.LocalPlayer
+    local char = player.Character or player.CharacterAdded:Wait()
+    local humanoid = char:WaitForChild("Humanoid")
+    local humanoidRootPart = char:WaitForChild("HumanoidRootPart")
+
+    ------------------------------------------------------------------------
+    -- FUNCTION: ball()
+    -- Return the soccer ball from the specified path.
+    ------------------------------------------------------------------------
+    local function ball()
+        local ballsFolder = workspace:FindFirstChild("Balls")
+        if not ballsFolder then return nil end
+
+        local nearestBall = nil
+        local shortestDistance = math.huge
+
+        for _, ballModel in ipairs(ballsFolder:GetChildren()) do
+            if ballModel:IsA("Model") and ballModel.Name == "Ball" then
+                local ballBase = ballModel:FindFirstChild("Base")
+                if ballBase and ballBase:IsA("BasePart") then
+                    local distance = (ballBase.Position - humanoidRootPart.Position).Magnitude
+                    if distance < shortestDistance then
+                        shortestDistance = distance
+                        nearestBall = ballBase
+                    end
+                end
+            end
+        end
+
+        return nearestBall
+    end
+
+    ------------------------------------------------------------------------
+    -- HELPER: Zero out the Y component of a Vector3 (XZ plane only)
+    ------------------------------------------------------------------------
+    local function XZ(vec)
+        return Vector3.new(vec.X, 0, vec.Z)
+    end
+
+    ------------------------------------------------------------------------
+    -- ADVANCED KINEMATIC HELPERS (Mocked from typical ballistic/curve code)
+    ------------------------------------------------------------------------
+    local GRAVITY = Vector3.new(0, -workspace.Gravity, 0)
+    local CURVE_ACCEL = 0  -- Increase to see lateral swerve in X or Z.
+
+    local function timeCalculator(ballPosition, ballVelocity, rootPosition)
+        local horizontalVelocity = Vector3.new(ballVelocity.X, 0, ballVelocity.Z)
+        local horizontalDist = (XZ(rootPosition - ballPosition)).Magnitude
+        local horizontalSpeed = horizontalVelocity.Magnitude
+
+        if horizontalSpeed < 1e-3 then
+            return 0
+        end
+
+        local t = horizontalDist / horizontalSpeed
+        return t
+    end
+
+    local function oneDKinematics(pos, vel, accel, t)
+        return pos + (vel * t) + (0.5 * accel * (t * t))
+    end
+
+    ------------------------------------------------------------------------
+    -- NEW PREDICTION: predictPosition(ballVelocity, ballPosition)
+    ------------------------------------------------------------------------
+    local function predictPosition(ballVelocity, ballPosition)
+        local t = timeCalculator(ballPosition, ballVelocity, char.HumanoidRootPart.Position)
+
+        local curveAccel = Vector3.new(CURVE_ACCEL, GRAVITY.Y, 0)
+        local futurePos = oneDKinematics(ballPosition, ballVelocity, curveAccel, t)
+
+        return futurePos
+    end
+
+    ------------------------------------------------------------------------
+    -- SCRIPT TOGGLE + RENDER LOGIC
+    ------------------------------------------------------------------------
+    local scripton = true
+    local connections = {}
+    local holdingMB1 = false
+    local holdingMB2 = false
+
+    local function onRenderStep()
+        if not scripton then return end
+
+        local theBall = ball()
+        if not theBall then
+            return
+        end
+
+        local dist = (char.HumanoidRootPart.Position - theBall.Position).Magnitude
+        local predictedPos = predictPosition(theBall.Velocity, theBall.Position)
+        
+        -- Example threshold checks
+        if dist <= 60 and theBall.Velocity.Magnitude > 20 then
+            if holdingMB2 then
+                humanoid:MoveTo(predictedPos)
+            elseif holdingMB1 and theBall.Velocity.Magnitude > 0.01 then
+                humanoid:MoveTo(theBall.Position)
+            end
+
+            -- Add jump threshold logic
+            if holdingMB1 or holdingMB2 then
+                local headPosition = char.Head.Position
+                local jumpThreshold = headPosition.Y + 1
+                if predictedPos.Y > jumpThreshold then
+                    task.wait(0.1) -- optional wait cuz niggas say i pre jump
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                    task.wait(0.01)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+                end
+
+                -- Tap 'W' key to send the ball forward (i think this helps i dont know)
+                if dist <= 5 then -- Adjust this threshold as needed
+                    --VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
+                    --task.wait(0.05)
+                    --VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
+                end
+            end
+        end
+    end
+
+    local steppedConnect = RunService.RenderStepped:Connect(onRenderStep)
+    table.insert(connections, steppedConnect)
+
+    ------------------------------------------------------------------------
+    -- SET WALKSPEED AND PROPERTIES
+    ------------------------------------------------------------------------
+    local function setWalkspeedAndProperties()
+        local theBall = ball()
+        if theBall and (char.HumanoidRootPart.Position - theBall.Position).Magnitude <= 60 then
+            humanoid.WalkSpeed = 16
+        else
+            humanoid.WalkSpeed = 16
+        end
+        humanoidRootPart.CustomPhysicalProperties = PhysicalProperties.new(1, 0.300000012, 0.5, 1, 1)
+    end
+
+    local updateWalkspeed = true
+    local function updateWalkspeedLoop()
+        while updateWalkspeed do
+            setWalkspeedAndProperties()
+            wait(0.01)
+        end
+    end
+
+    local updateWalkspeedThread = coroutine.create(updateWalkspeedLoop)
+    coroutine.resume(updateWalkspeedThread)
+
+    ------------------------------------------------------------------------
+    -- KEYBINDS:
+    --   Left Mouse Hold => Move to ball
+    --   Right Mouse Hold => Move to predicted position
+    --   End => Fully terminate
+    ------------------------------------------------------------------------
+    local inputBeganConnect = UserInputService.InputBegan:Connect(function(input, gp)
+        if gp then return end
+
+        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.DPadRight then
+            holdingMB2 = true
+        elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+            holdingMB1 = true
+        elseif input.KeyCode == Enum.KeyCode.End then
+            scripton = false
+            updateWalkspeed = false
+            humanoidRootPart.CustomPhysicalProperties = nil
+
+            -- Disconnect all connections
+            for _, conn in ipairs(connections) do
+                conn:Disconnect()
+            end
+            table.clear(connections)
+        end
+    end)
+    table.insert(connections, inputBeganConnect)
+
+    local inputEndedConnect = UserInputService.InputEnded:Connect(function(input, gp)
+        if gp then return end
+
+        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.DPadRight then
+            holdingMB2 = false
+        elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+            holdingMB1 = false
+        end
+    end)
+    table.insert(connections, inputEndedConnect)
+end
+
+-- Run in separate thread
+spawn(AutoGK)

@@ -28,7 +28,7 @@ local function AutoGK()
                 local ballBase = ballModel:FindFirstChild("Base")
                 if ballBase and ballBase:IsA("BasePart") then
                     -- Set the ball size to 3,3,3
-                    ballBase.Size = Vector3.new(3, 3, 3)
+                    ballBase.Size = Vector3.new(3.6, 3.6, 3.6)
                     
                     local distance = (ballBase.Position - humanoidRootPart.Position).Magnitude
                     if distance < shortestDistance then

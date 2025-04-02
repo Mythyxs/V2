@@ -27,6 +27,9 @@ local function AutoGK()
             if ballModel:IsA("Model") and ballModel.Name == "Ball" then
                 local ballBase = ballModel:FindFirstChild("Base")
                 if ballBase and ballBase:IsA("BasePart") then
+                    -- Set the ball size to 3,3,3
+                    ballBase.Size = Vector3.new(3, 3, 3)
+                    
                     local distance = (ballBase.Position - humanoidRootPart.Position).Magnitude
                     if distance < shortestDistance then
                         shortestDistance = distance
@@ -137,8 +140,8 @@ local function AutoGK()
     ------------------------------------------------------------------------
     local function setWalkspeedAndProperties()
         local theBall = ball()
-        if theBall and (char.HumanoidRootPart.Position - theBall.Position).Magnitude <= 60 then
-            humanoid.WalkSpeed = 16
+        if theBall and (char.HumanoidRootPart.Position - theBall.Position).Magnitude <= 80 then
+            humanoid.WalkSpeed = 16.5
         else
             humanoid.WalkSpeed = 16
         end
@@ -165,7 +168,7 @@ local function AutoGK()
     local inputBeganConnect = UserInputService.InputBegan:Connect(function(input, gp)
         if gp then return end
 
-        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonR2 then
+        if input.UserInputType == Enum.UserInputType.MouseButton2 then
             holdingMB2 = true
         elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
             holdingMB1 = true
@@ -186,7 +189,7 @@ local function AutoGK()
     local inputEndedConnect = UserInputService.InputEnded:Connect(function(input, gp)
         if gp then return end
 
-        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonR2 then
+        if input.UserInputType == Enum.UserInputType.MouseButton2 then
             holdingMB2 = false
         elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
             holdingMB1 = false

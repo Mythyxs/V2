@@ -1,0 +1,70 @@
+--// Services
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local workspace = game:GetService("Workspace")
+
+--// Variables
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local isRunning = true
+local enlargedSize = Vector3.new(3.6, 3.6, 3.6)
+local defaultSize = Vector3.new(2.6, 2.6, 2.6)
+local updatedBalls = {}
+
+--// Function to find and resize the nearest ball
+local function getNearestBall()
+	local ballsFolder = workspace:FindFirstChild("Balls")
+	if not ballsFolder then return nil end
+
+	local nearestBall = nil
+	local shortestDistance = math.huge
+
+	for _, ballModel in ipairs(ballsFolder:GetChildren()) do
+		if ballModel:IsA("Model") and ballModel.Name == "Ball" then
+			local ballBase = ballModel:FindFirstChild("Base")
+			if ballBase and ballBase:IsA("BasePart") then
+				if isRunning then
+					ballBase.Size = enlargedSize
+					updatedBalls[ballBase] = true
+				end
+
+				local distance = (ballBase.Position - humanoidRootPart.Position).Magnitude
+				if distance < shortestDistance then
+					shortestDistance = distance
+					nearestBall = ballBase
+				end
+			end
+		end
+	end
+
+	return nearestBall
+end
+
+--// Input handler for End key
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+
+	if input.KeyCode == Enum.KeyCode.End then
+		if isRunning then
+			isRunning = false
+
+			for ballBase, _ in pairs(updatedBalls) do
+				if ballBase and ballBase.Parent then
+					ballBase.Size = defaultSize
+				end
+			end
+
+			updatedBalls = {} -- Clear memory
+		end
+	end
+end)
+
+--// Loop to continuously resize balls and find nearest
+RunService.RenderStepped:Connect(function()
+	if isRunning then
+		getNearestBall()
+	end
+end)

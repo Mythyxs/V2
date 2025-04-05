@@ -1,0 +1,101 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+if not player then
+    Players.PlayerAdded:Wait()
+    player = Players.LocalPlayer
+end
+local userId = player.UserId 
+
+local TARGET_SPEED = 19
+
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local blockTargetValue = nil
+local speedLoopConnection = nil 
+local playerDataStorage = ReplicatedStorage:WaitForChild("PlayerDataStorage")
+local userSessionData = playerDataStorage:WaitForChild(tostring(userId)):WaitForChild("SessionData")
+blockTargetValue = userSessionData:WaitForChild("BlockTarget")
+
+local function forceSpeed()
+    if not humanoid then
+        return
+    end
+    if speedLoopConnection then
+        if humanoid.WalkSpeed ~= TARGET_SPEED then
+             humanoid.WalkSpeed = TARGET_SPEED
+        end
+        return
+    end
+
+    humanoid.WalkSpeed = TARGET_SPEED
+    speedLoopConnection = humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+        if humanoid and humanoid.WalkSpeed ~= TARGET_SPEED then
+            humanoid.WalkSpeed = TARGET_SPEED
+        end
+    end)
+end
+
+local function stopForceSpeed()
+    if speedLoopConnection then
+        speedLoopConnection:Disconnect()
+        speedLoopConnection = nil
+
+    else
+    end
+end
+
+local function updateSpeedBasedOnBlockTarget()
+    if not blockTargetValue then
+        return
+    end
+     if not humanoid then
+        return
+    end
+
+    local target = blockTargetValue.Value
+    if target == nil then
+        forceSpeed()
+    else
+        stopForceSpeed()
+    end
+end
+
+local function onCharacterAdded(newCharacter)
+    character = newCharacter
+    humanoid = newCharacter:WaitForChild("Humanoid")
+
+    if speedLoopConnection then
+        speedLoopConnection:Disconnect()
+        speedLoopConnection = nil
+    end
+
+    if not humanoid then
+        humanoid = newCharacter:WaitForChild("Humanoid", 10) 
+        if not humanoid then
+             return
+        end
+    end
+
+    updateSpeedBasedOnBlockTarget()
+
+    humanoid.Died:Connect(function()
+        stopForceSpeed()
+        humanoid = nil
+    end)
+end
+if character and humanoid then
+    onCharacterAdded(character)
+else
+end
+player.CharacterAdded:Connect(onCharacterAdded)
+if blockTargetValue then
+    blockTargetValue.Changed:Connect(function(newValue)
+        if not humanoid then
+            return
+        end
+        updateSpeedBasedOnBlockTarget() 
+    end)
+end

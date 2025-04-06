@@ -1,105 +1,154 @@
+-- Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+-- Constants for Speed Control
+local MIN_SPEED = 13
+local MAX_SPEED = 23.5
+local ACCELERATION = 8 -- Speed units per second
+local DECELERATION = 8 -- Speed units per second
+
+-- Player and Character Variables
 local player = Players.LocalPlayer
 if not player then
     Players.PlayerAdded:Wait()
     player = Players.LocalPlayer
 end
 local userId = player.UserId
+local character = player.Character -- Initial attempt to get character
+local humanoid = character and character:FindFirstChildWhichIsA("Humanoid") -- Initial attempt to get humanoid
 
-local MIN_SPEED = 13
-local MAX_SPEED = 21
-local ACCELERATION = 8 -- Speed units per second
-local DECELERATION = 8 -- Speed units per second
+-- State Variables
+local qbingValue = nil
+local heartbeatConnection = nil
+local currentSpeed = MIN_SPEED -- Keep track of the dynamically calculated speed
 
-local currentSpeed = MIN_SPEED
-local targetSpeed = MIN_SPEED
-
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-
-local speedLoopConnection = nil
-local updateLoopConnection = nil
+-- Find Player Data Storage and QBing Value
 local playerDataStorage = ReplicatedStorage:WaitForChild("PlayerDataStorage")
 local userSessionData = playerDataStorage:WaitForChild(tostring(userId)):WaitForChild("SessionData")
-local qbingValue = userSessionData:WaitForChild("QBing") -- BoolValue
+qbingValue = userSessionData:WaitForChild("QBing") -- Wait for the BoolValue named QBing
 
-local function startAccelSpeedLoop()
-    if updateLoopConnection then return end
-
-    updateLoopConnection = RunService.Heartbeat:Connect(function(dt)
-        if not humanoid then return end
-
-        local moveDirection = humanoid.MoveDirection
-        if moveDirection.Magnitude > 0 then
-            targetSpeed = MAX_SPEED
-        else
-            targetSpeed = MIN_SPEED
-        end
-
-        if currentSpeed < targetSpeed then
-            currentSpeed = math.min(currentSpeed + ACCELERATION * dt, targetSpeed)
-        elseif currentSpeed > targetSpeed then
-            currentSpeed = math.max(currentSpeed - DECELERATION * dt, targetSpeed)
-        end
-
-        humanoid.WalkSpeed = currentSpeed
-    end)
-end
-
-local function stopAccelSpeedLoop()
-    if updateLoopConnection then
-        updateLoopConnection:Disconnect()
-        updateLoopConnection = nil
+-- Function to update speed dynamically (acceleration/deceleration)
+local function updateDynamicSpeed(dt)
+    if not humanoid or humanoid:GetState() == Enum.HumanoidStateType.Dead then
+        return -- Don't run if humanoid is invalid or dead
     end
-    if humanoid then
-        humanoid.WalkSpeed = MAX_SPEED
-    end
-end
 
-local function updateSpeedBasedOnQBing()
-    if not qbingValue or not humanoid then return end
+    local moveDirection = humanoid.MoveDirection
+    local targetSpeed -- Declare targetSpeed locally within the function
 
-    if qbingValue.Value == true then
-        stopAccelSpeedLoop()
+    -- Determine target speed based on movement
+    if moveDirection.Magnitude > 0 then
+        targetSpeed = MAX_SPEED
     else
-        currentSpeed = MIN_SPEED
-        humanoid.WalkSpeed = MIN_SPEED
-        startAccelSpeedLoop()
+        targetSpeed = MIN_SPEED
+    end
+
+    -- Apply acceleration or deceleration
+    if currentSpeed < targetSpeed then
+        currentSpeed = math.min(currentSpeed + ACCELERATION * dt, targetSpeed)
+    elseif currentSpeed > targetSpeed then
+        currentSpeed = math.max(currentSpeed - DECELERATION * dt, targetSpeed)
+    end
+
+    -- Apply the calculated speed
+    humanoid.WalkSpeed = currentSpeed
+end
+
+-- Function to START the dynamic speed control loop
+local function startDynamicSpeedControl()
+    if not humanoid then return end -- Need a humanoid
+    if heartbeatConnection then return end -- Already running
+
+    currentSpeed = humanoid.WalkSpeed -- Start from current speed for smoother transition initially? Or MIN_SPEED? Let's stick to MIN_SPEED for consistency with original accel script.
+    currentSpeed = MIN_SPEED
+    humanoid.WalkSpeed = currentSpeed -- Set initial speed
+
+    -- Connect to Heartbeat to run the update function every frame
+    heartbeatConnection = RunService.Heartbeat:Connect(updateDynamicSpeed)
+end
+
+-- Function to STOP the dynamic speed control loop
+local function stopDynamicSpeedControl()
+    if not heartbeatConnection then return end -- Already stopped
+
+    heartbeatConnection:Disconnect()
+    heartbeatConnection = nil
+
+    -- Optional: Reset speed to a default when stopping control
+    -- If you want Roblox default speed, use 16
+    -- If you want the minimum speed, use MIN_SPEED
+    if humanoid then
+         -- humanoid.WalkSpeed = 16 -- Example: Reset to Roblox default
+         humanoid.WalkSpeed = MIN_SPEED -- Example: Reset to script's min speed
+    end
+    currentSpeed = MIN_SPEED -- Reset internal tracking too
+end
+
+-- Function to check QBing value and decide whether to start/stop dynamic speed
+local function updateSpeedBasedOnQBing()
+    if not qbingValue or not humanoid then
+        return
+    end
+
+    local isQBingActive = qbingValue.Value -- Read the boolean value
+
+    if isQBingActive then
+        -- If QBing is TRUE, stop controlling the speed
+        stopDynamicSpeedControl()
+    else
+        -- If QBing is FALSE, start controlling the speed dynamically
+        startDynamicSpeedControl()
     end
 end
 
+-- Function to handle when the player's character is added/respawns
 local function onCharacterAdded(newCharacter)
+    -- Stop any existing speed control loop immediately
+    stopDynamicSpeedControl()
+
     character = newCharacter
     humanoid = newCharacter:WaitForChild("Humanoid")
 
-    if updateLoopConnection then
-        updateLoopConnection:Disconnect()
-        updateLoopConnection = nil
+    if not humanoid then
+         warn("Humanoid not found immediately on character added!")
+         humanoid = newCharacter:WaitForChild("Humanoid", 10) -- Wait a bit longer just in case
+         if not humanoid then
+            warn("Failed to find Humanoid even after waiting!")
+            return -- Cannot proceed without a humanoid
+         end
     end
 
+    -- Reset speed state for the new character
     currentSpeed = MIN_SPEED
-    humanoid.WalkSpeed = MIN_SPEED
+    humanoid.WalkSpeed = MIN_SPEED -- Ensure initial speed is set correctly
 
+    -- Determine initial speed control state based on current QBing value
     updateSpeedBasedOnQBing()
 
+    -- Connect to the Died event for the new humanoid
     humanoid.Died:Connect(function()
-        stopAccelSpeedLoop()
-        humanoid = nil
+        stopDynamicSpeedControl() -- Stop controlling speed when dead
+        humanoid = nil -- Clear the humanoid reference
     end)
 end
 
--- Handle current character
-onCharacterAdded(character)
+-- Initial Setup and Connections
 
--- Handle respawn
+if character and humanoid then
+    onCharacterAdded(character)
+else
+end
+
 player.CharacterAdded:Connect(onCharacterAdded)
 
--- React to QBing value changes
 if qbingValue then
-    qbingValue.Changed:Connect(function()
-        updateSpeedBasedOnQBing()
+    qbingValue.Changed:Connect(function(newValue)
+        if humanoid then
+            updateSpeedBasedOnQBing()
+        else
+        end
     end)
+else
 end

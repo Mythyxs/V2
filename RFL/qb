@@ -5,7 +5,7 @@ local RunService = game:GetService("RunService")
 
 -- Constants for Speed Control
 local MIN_SPEED = 13
-local MAX_SPEED = 23.5
+local MAX_SPEED = 21
 local ACCELERATION = 8 -- Speed units per second
 local DECELERATION = 8 -- Speed units per second
 

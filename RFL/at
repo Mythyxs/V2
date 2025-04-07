@@ -1,0 +1,82 @@
+ local Players = game:GetService("Players")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local UserInputService = game:GetService("UserInputService")
+    
+    local player = Players.LocalPlayer
+    local playerDataStorage = ReplicatedStorage:WaitForChild("PlayerDataStorage")
+    local playerData = playerDataStorage:WaitForChild(tostring(player.UserId))
+    local sessionData = playerData:WaitForChild("SessionData")
+    local tuckingBoolValue = sessionData:WaitForChild("Tucking")
+    
+    local footballEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Football"):WaitForChild("Events/Functions"):WaitForChild("Event")
+    local character = player.Character or player.CharacterAdded:Wait()
+    
+    -- Track if the script should be terminated
+    local terminated = false
+    local connections = {}
+    
+    -- Function to handle Football being added
+    local function onFootballAdded()
+        if terminated then return end
+        if not tuckingBoolValue.Value then
+            task.wait(0.1) -- delay for legit install said 0.1 looks fine
+            local args = {
+                [1] = "Tuck"
+            }
+            footballEvent:FireServer(unpack(args))
+            task.wait(0.5) -- Prevents repeated firing
+        end
+    end
+    
+    -- Declare the function reference early
+    local function setupCharacterListeners()
+        if terminated then return end
+    
+        local conn = character.ChildAdded:Connect(function(child)
+            if terminated then return end
+            if child.Name == "Football" then
+                onFootballAdded()
+            end
+        end)
+        table.insert(connections, conn)
+    end
+    
+    -- Setup listener for the current character
+    setupCharacterListeners()
+    
+    -- Hook for future respawns
+    local charAddedConn = player.CharacterAdded:Connect(function(newChar)
+        if terminated then return end
+        character = newChar
+        setupCharacterListeners()
+    end)
+    table.insert(connections, charAddedConn)
+    
+    -- Catch already existing football on script load
+    local existingFootball = character:FindFirstChild("Football")
+    if existingFootball and not tuckingBoolValue.Value then
+        onFootballAdded()
+    end
+    
+    -- Termination logic
+    local function terminateScript()
+        if terminated then return end
+        terminated = true
+    
+        -- Disconnect all connections
+        for _, conn in ipairs(connections) do
+            if conn.Connected then
+                conn:Disconnect()
+            end
+        end
+        table.clear(connections)
+    end
+    
+    -- Listen for End key to terminate the script
+    local inputConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed or terminated then return end
+        if input.KeyCode == Enum.KeyCode.End then
+            terminateScript()
+        end
+    end)
+    table.insert(connections, inputConn)  

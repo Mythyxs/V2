@@ -1,0 +1,160 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local running = true
+local connections = {}
+
+local HIT_ANIM_ID = "rbxassetid://11714633033"
+local SWIPE_ANIM_ID = "rbxassetid://17254604434"
+local COOLDOWN_DURATION = 1.5 -- seconds
+local lastSwipeTime = 0
+
+-- Boost logic
+local function applyBoost(hrp, screenPush)
+	local existing = hrp:FindFirstChild("CancelPush_BV")
+	if existing then existing:Destroy() end
+
+	local boost = Instance.new("BodyVelocity")
+	boost.Name = "CancelPush_BV"
+	boost.Velocity = hrp.CFrame.LookVector * 15
+	boost.MaxForce = Vector3.new(math.huge, 0, math.huge)
+	boost.P = 1250
+	boost.Parent = hrp
+
+	print("[INFO] Boost applied: " .. tostring(boost.Velocity))
+
+	local monitorConn
+	monitorConn = RunService.Heartbeat:Connect(function()
+		if not running then
+			if boost and boost.Parent then boost:Destroy() end
+			if monitorConn then monitorConn:Disconnect() end
+			return
+		end
+
+		if not screenPush or not screenPush:IsDescendantOf(hrp) then
+			if boost and boost.Parent then boost:Destroy() end
+			if monitorConn then monitorConn:Disconnect() end
+			print("[INFO] Boost removed (ScreenPush_BV gone)")
+		end
+	end)
+
+	table.insert(connections, monitorConn)
+end
+
+-- Monitor HRP for ScreenPush_BV
+local function monitorHRP(char)
+	local hrp = char:WaitForChild("HumanoidRootPart")
+
+	local conn = hrp.ChildAdded:Connect(function(child)
+		if not running then return end
+		if child.Name == "ScreenPush_BV" and child:IsA("BodyVelocity") then
+			applyBoost(hrp, child)
+		end
+	end)
+
+	table.insert(connections, conn)
+end
+
+-- Monitor animations and override HIT animation once with cooldown
+local function monitorAnimations(char)
+	local humanoid = char:WaitForChild("Humanoid")
+	local animator = humanoid:FindFirstChildWhichIsA("Animator") or Instance.new("Animator", humanoid)
+
+	local swipeAnim = Instance.new("Animation")
+	swipeAnim.AnimationId = SWIPE_ANIM_ID
+	local swipeTrack = humanoid:LoadAnimation(swipeAnim)
+
+	local currentlyIntercepting = false
+
+	local function tryPlaySwipe()
+		local currentTime = tick()
+		if currentlyIntercepting then return end
+		if currentTime - lastSwipeTime < COOLDOWN_DURATION then return end
+
+		currentlyIntercepting = true
+		lastSwipeTime = currentTime
+
+		if swipeTrack.IsPlaying then
+			swipeTrack:Stop()
+		end
+
+		swipeTrack:Play()
+		print("[INFO] Swipe animation played")
+
+		swipeTrack.Stopped:Connect(function()
+			currentlyIntercepting = false
+		end)
+	end
+
+	local animatorConn = animator.AnimationPlayed:Connect(function(animTrack)
+		if animTrack.Animation.AnimationId == HIT_ANIM_ID then
+			animTrack:Stop(0)
+			tryPlaySwipe()
+			print("[INFO] HIT animation intercepted via AnimationPlayed")
+		end
+	end)
+
+	table.insert(connections, animatorConn)
+
+	local trackConn = RunService.Heartbeat:Connect(function()
+		if not running then
+			if trackConn then trackConn:Disconnect() end
+			return
+		end
+
+		for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+			if track.Animation and track.Animation.AnimationId == HIT_ANIM_ID then
+				track:Stop(0)
+				tryPlaySwipe()
+				print("[INFO] HIT animation intercepted via fallback")
+			end
+		end
+	end)
+
+	table.insert(connections, trackConn)
+end
+
+-- Terminate script
+local function terminateScript()
+	print("[TERMINATED] Full script disabled.")
+	running = false
+
+	for _, conn in ipairs(connections) do
+		if typeof(conn) == "RBXScriptConnection" then
+			conn:Disconnect()
+		end
+	end
+	table.clear(connections)
+
+	local char = player.Character
+	if char then
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			local bv = hrp:FindFirstChild("CancelPush_BV")
+			if bv then bv:Destroy() end
+		end
+	end
+end
+
+-- End key listener
+UserInputService.InputBegan:Connect(function(input, processed)
+	if not processed and input.KeyCode == Enum.KeyCode.End then
+		terminateScript()
+	end
+end)
+
+-- Monitor char
+local function onCharacterAdded(char)
+	if running then
+		monitorHRP(char)
+		monitorAnimations(char)
+	end
+end
+
+if player.Character then
+	onCharacterAdded(player.Character)
+end
+
+player.CharacterAdded:Connect(onCharacterAdded)

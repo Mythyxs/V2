@@ -1,0 +1,126 @@
+repeat wait() until game:IsLoaded()
+
+local generaloffset = 0 -- probably should only change this
+
+local offdribbleoffset = 10
+local fadeawayoffset = 10
+local standingoffset = 7
+local postfadeoffset = 0
+local dunkingoffset = 10
+
+local debounce = true
+local eventFired = false
+local shift = false
+
+local args = {
+    [1] = false,
+    [2] = "Shooting",
+    [3] = "Standing Shot"
+}
+
+local function checkAnimations(animationIds, humanoid)
+    local playingTracks = humanoid:GetPlayingAnimationTracks()
+    for _, track in ipairs(playingTracks) do
+        local currentAnimation = track.Animation
+        for _, animationId in ipairs(animationIds) do
+            if currentAnimation.AnimationId == animationId then
+                return true
+            end
+        end
+    end
+end
+
+-- Default to 70 if not set
+_G.Release = _G.Release or 70
+
+-- Monitor Power Value changes
+local power = game.Players.LocalPlayer.Backpack.ActionValues.Power
+local connections = {}
+
+connections[#connections + 1] = power.Changed:Connect(function(newValue)
+    if debounce == true then
+        if newValue >= _G.Release then
+            if not eventFired then
+                game:GetService("ReplicatedStorage").PlayerEvents.Shooting:FireServer(unpack(args))
+                eventFired = true
+            end
+        else
+            eventFired = false
+        end
+    end
+end)
+
+-- RunService Heartbeat connection for checking animations and conditions
+local runLoop
+runLoop = game:GetService("RunService").Heartbeat:Connect(function()
+    pcall(function()
+        local jumpshot = {
+            game.Players.LocalPlayer.Backpack.GameplayAnimations.ShootingAnimations.Jumpshot.AnimationId,
+        }
+
+        if checkAnimations(jumpshot, game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")) then
+            args = {
+                [1] = false,
+                [2] = "Shooting",
+                [3] = "Standing Shot"
+            }
+        end
+
+        if game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild("Dunk_BV") then
+            args = {
+                [1] = false,
+                [2] = "Standing Dunk",
+                [3] = 1
+            }
+        elseif game.Players.LocalPlayer.Character:FindFirstChild("Moving Shot Type") then
+            local shotType = game.Players.LocalPlayer.Character:FindFirstChild("Moving Shot Type").Value
+
+            if shotType == "Off Dribble" or shotType == "Fade" then
+                args = {
+                    [1] = false,
+                    [2] = "Shooting",
+                    [3] = "Moving Shot"
+                }
+            end
+        end
+    end)
+end)
+
+-- Input handlers for stopping and changing debounce state
+connections[#connections + 1] = game.UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.End then
+        for _, connection in ipairs(connections) do
+            connection:Disconnect()
+        end
+        if runLoop then runLoop:Disconnect() end
+
+        debounce = nil
+        eventFired = nil
+        shift = nil
+        args = nil
+        checkAnimations = nil
+        connections = nil
+        runLoop = nil
+        power = nil
+        generaloffset = nil
+        offdribbleoffset = nil
+        fadeawayoffset = nil
+        standingoffset = nil
+        postfadeoffset = nil
+        dunkingoffset = nil
+
+        script:Destroy()
+    end
+end)
+
+connections[#connections + 1] = game.UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Nine then
+        debounce = false
+    end
+end)
+
+connections[#connections + 1] = game.UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Zero then
+        debounce = true
+    end
+end)

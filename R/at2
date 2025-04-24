@@ -88,7 +88,7 @@ end)
 
 -- Input handlers for stopping and changing debounce state
 connections[#connections + 1] = game.UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.End then
+    if input.KeyCode == Enum.KeyCode.Equals then
         for _, connection in ipairs(connections) do
             connection:Disconnect()
         end

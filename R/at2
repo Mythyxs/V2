@@ -87,8 +87,8 @@ runLoop = game:GetService("RunService").Heartbeat:Connect(function()
 end)
 
 -- Input handlers for stopping and changing debounce state
-connections[#connections + 1] = game.UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.Equals then
+connections[#connections + 1] = game.UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.Equals or input.KeyCode == Enum.KeyCode.ButtonL1 then
         for _, connection in ipairs(connections) do
             connection:Disconnect()
         end

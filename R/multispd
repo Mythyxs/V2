@@ -2,12 +2,12 @@ local player = game.Players.LocalPlayer
 local userInputService = game:GetService("UserInputService")
 local runService = game:GetService("RunService")
 
--- Define the desired walk speeds
-local normalSpeed = 11
-local shiftSpeed = 13.5
-local gSpeedInPost = 8.5
-local gSpeedNotInPost = 11.5
-local fSpeed = 4.3
+-- Global speed settings for external config
+_G.NormalSpeed = _G.NormalSpeed or 11
+_G.ShiftSpeed = _G.ShiftSpeed or 13.5
+_G.GSpeedInPost = _G.GSpeedInPost or 8.5
+_G.GSpeedNotInPost = _G.GSpeedNotInPost or 11.5
+_G.FSpeed = _G.FSpeed or 4.3
 
 local adjustingSpeed = false
 local heartbeatConnection
@@ -29,16 +29,16 @@ local function adjustSpeed(humanoid)
     adjustingSpeed = true
     if userInputService:IsKeyDown(Enum.KeyCode.G) then
         if isInPost() then
-            humanoid.WalkSpeed = gSpeedInPost
+            humanoid.WalkSpeed = _G.GSpeedInPost
         else
-            humanoid.WalkSpeed = gSpeedNotInPost
+            humanoid.WalkSpeed = _G.GSpeedNotInPost
         end
     elseif userInputService:IsKeyDown(Enum.KeyCode.F) then
-        humanoid.WalkSpeed = fSpeed
+        humanoid.WalkSpeed = _G.FSpeed
     elseif userInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-        humanoid.WalkSpeed = shiftSpeed
+        humanoid.WalkSpeed = _G.ShiftSpeed
     else
-        humanoid.WalkSpeed = normalSpeed
+        humanoid.WalkSpeed = _G.NormalSpeed
     end
     adjustingSpeed = false
 end

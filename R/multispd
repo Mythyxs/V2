@@ -1,0 +1,108 @@
+local player = game.Players.LocalPlayer
+local userInputService = game:GetService("UserInputService")
+local runService = game:GetService("RunService")
+
+-- Define the desired walk speeds
+local normalSpeed = 11
+local shiftSpeed = 13.5
+local gSpeedInPost = 8.5
+local gSpeedNotInPost = 11.5
+local fSpeed = 4.3
+
+local adjustingSpeed = false
+local heartbeatConnection
+local inputBeganConnection
+local inputEndedConnection
+local characterAddedConnection
+local humanoidChangedConnection
+local scriptActive = true
+
+local function isInPost()
+    local success, inPost = pcall(function()
+        return player:WaitForChild("Backpack"):WaitForChild("PlayerValues"):WaitForChild("InPost")
+    end)
+    return success and inPost and inPost.Value or false
+end
+
+local function adjustSpeed(humanoid)
+    if not scriptActive or adjustingSpeed then return end
+    adjustingSpeed = true
+    if userInputService:IsKeyDown(Enum.KeyCode.G) then
+        if isInPost() then
+            humanoid.WalkSpeed = gSpeedInPost
+        else
+            humanoid.WalkSpeed = gSpeedNotInPost
+        end
+    elseif userInputService:IsKeyDown(Enum.KeyCode.F) then
+        humanoid.WalkSpeed = fSpeed
+    elseif userInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+        humanoid.WalkSpeed = shiftSpeed
+    else
+        humanoid.WalkSpeed = normalSpeed
+    end
+    adjustingSpeed = false
+end
+
+local function onCharacterAdded(character)
+    if not scriptActive then return end
+    local humanoid = character:WaitForChild("Humanoid")
+    adjustSpeed(humanoid)
+
+    if humanoidChangedConnection then
+        humanoidChangedConnection:Disconnect()
+    end
+
+    humanoidChangedConnection = humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+        if scriptActive and not adjustingSpeed then
+            adjustSpeed(humanoid)
+        end
+    end)
+
+    if heartbeatConnection then
+        heartbeatConnection:Disconnect()
+    end
+
+    heartbeatConnection = runService.Heartbeat:Connect(function()
+        if scriptActive and humanoid and humanoid.Parent then
+            adjustSpeed(humanoid)
+        end
+    end)
+end
+
+characterAddedConnection = player.CharacterAdded:Connect(onCharacterAdded)
+
+if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+    onCharacterAdded(player.Character)
+end
+
+inputBeganConnection = userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed or not scriptActive then return end
+
+    if input.KeyCode == Enum.KeyCode.End then
+        scriptActive = false
+
+        if heartbeatConnection then heartbeatConnection:Disconnect() end
+        if inputBeganConnection then inputBeganConnection:Disconnect() end
+        if inputEndedConnection then inputEndedConnection:Disconnect() end
+        if characterAddedConnection then characterAddedConnection:Disconnect() end
+        if humanoidChangedConnection then humanoidChangedConnection:Disconnect() end
+
+        return
+    end
+
+    if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.G or input.KeyCode == Enum.KeyCode.F then
+        if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+            adjustSpeed(player.Character.Humanoid)
+        end
+    end
+end)
+
+inputEndedConnection = userInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed or not scriptActive then return end
+
+    if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.G or input.KeyCode == Enum.KeyCode.F then
+        if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+            adjustSpeed(player.Character.Humanoid)
+        end
+    end
+end)

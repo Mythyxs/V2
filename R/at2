@@ -1,12 +1,12 @@
 repeat wait() until game:IsLoaded()
 
-local generaloffset = 0 -- probably should only change this
-
-local offdribbleoffset = 10
-local fadeawayoffset = 10
-local standingoffset = 7
-local postfadeoffset = 0
-local dunkingoffset = 10
+-- Global offsets
+_G.GeneralOffset = _G.GeneralOffset or 0
+_G.OffDribbleOffset = _G.OffDribbleOffset or 10
+_G.FadeawayOffset = _G.FadeawayOffset or 10
+_G.StandingOffset = _G.StandingOffset or 7
+_G.PostFadeOffset = _G.PostFadeOffset or 0
+_G.DunkingOffset = _G.DunkingOffset or 10
 
 local debounce = true
 local eventFired = false
@@ -102,12 +102,14 @@ connections[#connections + 1] = game.UserInputService.InputBegan:Connect(functio
         connections = nil
         runLoop = nil
         power = nil
-        generaloffset = nil
-        offdribbleoffset = nil
-        fadeawayoffset = nil
-        standingoffset = nil
-        postfadeoffset = nil
-        dunkingoffset = nil
+
+        _G.GeneralOffset = nil
+        _G.OffDribbleOffset = nil
+        _G.FadeawayOffset = nil
+        _G.StandingOffset = nil
+        _G.PostFadeOffset = nil
+        _G.DunkingOffset = nil
+        _G.Release = nil
 
         script:Destroy()
     end

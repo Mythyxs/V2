@@ -1,0 +1,69 @@
+local function checkAnimations(animationIds, humanoid)
+	local playingTracks = humanoid:GetPlayingAnimationTracks()
+	for _, track in ipairs(playingTracks) do
+		local currentAnimation = track.Animation
+		for _, animationId in ipairs(animationIds) do
+			if currentAnimation.AnimationId == animationId then
+				return true
+			end
+		end
+	end
+end
+
+local player = game.Players.LocalPlayer
+
+-- Set default globals if not already defined
+_G.Release = _G.Release or 69
+_G.LayupRelease = _G.LayupRelease or 65
+
+game.Players.LocalPlayer.Character.HumanoidRootPart.CustomPhysicalProperties = PhysicalProperties.new(1, 0.3, 0.5, 1, 1)
+
+local eventFired = false
+
+local runLoop
+runLoop = game:GetService("RunService").Heartbeat:Connect(function()
+	pcall(function()
+		local args = {
+			[1] = false,
+			[2] = "Shooting",
+			[3] = "Standing Shot"
+		}
+
+		local floater = {
+			player.Backpack.GameplayAnimations.FloaterAnimations.RH_Floater.AnimationId,
+			player.Backpack.GameplayAnimations.FloaterAnimations.LH_CloseFloater.AnimationId,
+			player.Backpack.GameplayAnimations.FloaterAnimations.LH_Floater.AnimationId,
+			player.Backpack.GameplayAnimations.FloaterAnimations.RH_CloseFloater.AnimationId,
+		}
+
+		local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+		if checkAnimations(floater, humanoid) then
+			_G.Release = _G.LayupRelease
+		elseif player.Character:FindFirstChild("inFinishing") then
+			args = {
+				[1] = false,
+				[2] = "Shooting",
+				[3] = "Close Layup"
+			}
+		end
+
+		if player.Backpack.ActionValues.Power.Value >= _G.Release then
+			if not eventFired then
+				game:GetService("ReplicatedStorage"):WaitForChild("PlayerEvents", 9e9):WaitForChild("Shooting", 9e9):FireServer(unpack(args))
+				eventFired = true
+			end
+		else
+			eventFired = false
+		end
+	end)
+end)
+
+local d
+d = game:GetService("UserInputService").InputBegan:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.End then
+		pcall(function()
+			runLoop:Disconnect()
+			d:Disconnect()
+		end)
+	end
+end)

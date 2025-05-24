@@ -1,3 +1,4 @@
+--[[
 -- LocalPlayer reference
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -247,3 +248,4 @@ end))
 
 -- Start the main loop
 mainLoop()
+--]]

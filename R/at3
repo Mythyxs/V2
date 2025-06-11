@@ -60,7 +60,7 @@ end)
 
 local d
 d = game:GetService("UserInputService").InputBegan:Connect(function(input)
-	if input.KeyCode == Enum.KeyCode.End then
+	if input.KeyCode == Enum.KeyCode.ButtonR3 then
 		pcall(function()
 			runLoop:Disconnect()
 			d:Disconnect()

@@ -1,103 +1,81 @@
---[[
-_G.Acceleration = 1
-_G.BoxoutSpeed = 1
-_G.GuardSpeed = 1.1
-_G.NormalSpeed = 1.05
-_G.PostSpeed = 1
-_G.ScreenSpeed = 1.1
-_G.WalkDivider = 1
-_G.CanCollide = false -- this is noclip for screens very good false means its on
---]]
-
 local player = game.Players.LocalPlayer
 local char = workspace:FindFirstChild(player.Name)
 if not char then return end
-
 local humanoid = char:FindFirstChild("Humanoid")
 local properties = char:FindFirstChild("Properties")
 if not humanoid then return end
 if not properties then return end
 
--- Set CollisionBox.CanCollide based on _G variable
-local collisionBox = char:FindFirstChild("CollisionBox")
-if collisionBox then
-    collisionBox.CanCollide = _G.CanCollide or false
+local noclip = char:FindFirstChild("CollisionBox")
+if noclip then
+    noclip.CanCollide = _G.CanCollide or false
 end
-
--- Set other character properties
 local head = char:FindFirstChild("Head")
 if head then
     head.CustomPhysicalProperties = PhysicalProperties.new(0.0001, 0.300000012, 0.5, 1, 1)
 end
 
-local alignPosition = char:FindFirstChild("AlignPosition")
-if alignPosition then
-    alignPosition.Responsiveness = 40
+local aglinshit = char:FindFirstChild("AlignPosition")
+if aglinshit then
+    aglinshit.Responsiveness = 40
 end
 
-local alignOrientation = char:FindFirstChild("AlignOrientation")
-if alignOrientation then
-    alignOrientation.Responsiveness = 40
+local alligno = char:FindFirstChild("AlignOrientation")
+if alligno then
+    alligno.Responsiveness = 40
 end
 
-local RUNNING = true -- Controls script execution
-
--- Multipliers, overrideable via _G variables
+local on = true
 local multipliers = {
-	Acceleration = _G.Acceleration or 1,
-	BoxoutSpeed = _G.BoxoutSpeed or 1,
-	GuardSpeed = _G.GuardSpeed or 1,
-	NormalSpeed = _G.NormalSpeed or 1,
-	PostSpeed = _G.PostSpeed or 1,
-	ScreenSpeed = _G.ScreenSpeed or 1,
-	WalkDivider = _G.WalkDivider or 1,
-	-- WithBallSpeed = _G.WithBallSpeed or 1,  -- Uncomment if needed
+    Acceleration = _G.Acceleration or 1,
+    BoxoutSpeed = _G.BoxoutSpeed or 1,
+    GuardSpeed = _G.GuardSpeed or 1,
+    NormalSpeed = _G.NormalSpeed or 1,
+    PostSpeed = _G.PostSpeed or 1,
+    ScreenSpeed = _G.ScreenSpeed or 1,
+    WalkDivider = _G.WalkDivider or 1,
+    WithBallSpeed = _G.WithBallSpeed or 1,
 }
 
--- Save original attribute values from the humanoid
-local originalValues = {}
-for attrName, multiplier in pairs(multipliers) do
-	local value = humanoid:GetAttribute(attrName)
-	if value then
-		originalValues[attrName] = value
-	end
+local values = {}
+for attribute, multiplier in pairs(multipliers) do
+    local value = humanoid:GetAttribute(attribute)
+    if value then
+        values[attribute] = value
+    end
 end
 
--- Function to continuously update attributes based on multipliers and sprinting status
-local function updateAttributes()
-	while RUNNING do
-		local sprinting = properties:GetAttribute("Sprinting") == true
-		for attrName, multiplier in pairs(multipliers) do
-			local originalValue = originalValues[attrName]
-			if originalValue then
-				local newValue = originalValue * multiplier
-				if sprinting then
-					newValue = newValue + 1 -- Extra bonus when sprinting
-				end
-				humanoid:SetAttribute(attrName, newValue)
-			end
-		end
-		task.wait(0.1)
-	end
+local r = game:GetService("RunService")
+local function dothething()
+    r.Heartbeat:Connect(function()
+        if not on then return end
+        local sprinting = properties:GetAttribute("Sprinting") == true
+        for attribute, multiplier in pairs(multipliers) do
+            local originals = values[attribute]
+            if originals then
+                local new = originals * multiplier
+                if sprinting then
+                    new = new + 1 
+                end
+                humanoid:SetAttribute(attribute, new)
+            end
+        end
+    end)
 end
 
--- Function to restore original attribute values
-local function restoreAttributes()
-	for attrName, originalValue in pairs(originalValues) do
-		humanoid:SetAttribute(attrName, originalValue)
-	end
-end
 
--- Keybind (End key) to stop the script and restore original values
+local function comeback()
+    for attribute, originals in pairs(values) do
+        humanoid:SetAttribute(attribute, originals)
+    end
+end
 local UserInputService = game:GetService("UserInputService")
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.End then
-		RUNNING = false
-		restoreAttributes()
-		script:Destroy()
-	end
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.End or input.KeyCode == Enum.KeyCode.DPadUp then
+        on = false
+        comeback()
+        script:Destroy()
+    end
 end)
-
--- Start the update loop
-task.spawn(updateAttributes)
+task.spawn(dothething)

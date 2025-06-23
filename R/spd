@@ -55,7 +55,7 @@ local function dothething()
             if originals then
                 local new = originals * multiplier
                 if sprinting then
-                    new = new + 1 
+                    new = new + 0.9 
                 end
                 humanoid:SetAttribute(attribute, new)
             end

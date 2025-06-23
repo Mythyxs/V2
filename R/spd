@@ -10,6 +10,7 @@ local noclip = char:FindFirstChild("CollisionBox")
 if noclip then
     noclip.CanCollide = _G.CanCollide or false
 end
+
 local head = char:FindFirstChild("Head")
 if head then
     head.CustomPhysicalProperties = PhysicalProperties.new(0.0001, 0.300000012, 0.5, 1, 1)
@@ -49,13 +50,19 @@ local r = game:GetService("RunService")
 local function dothething()
     r.Heartbeat:Connect(function()
         if not on then return end
+
         local sprinting = properties:GetAttribute("Sprinting") == true
+        local stun = properties:GetAttribute("CanPickUp") == false
+
         for attribute, multiplier in pairs(multipliers) do
-            local originals = values[attribute]
-            if originals then
-                local new = originals * multiplier
+            local original = values[attribute]
+            if original then
+                local new = original * multiplier
                 if sprinting then
-                    new = new + 0.9 
+                    new = new + 0.9
+                end
+                if stun then
+                    new = new - 5
                 end
                 humanoid:SetAttribute(attribute, new)
             end
@@ -63,12 +70,12 @@ local function dothething()
     end)
 end
 
-
 local function comeback()
-    for attribute, originals in pairs(values) do
-        humanoid:SetAttribute(attribute, originals)
+    for attribute, original in pairs(values) do
+        humanoid:SetAttribute(attribute, original)
     end
 end
+
 local UserInputService = game:GetService("UserInputService")
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
@@ -78,4 +85,5 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         script:Destroy()
     end
 end)
+
 task.spawn(dothething)

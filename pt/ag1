@@ -102,11 +102,12 @@ local function AutoGK()
         local dist = (char.HumanoidRootPart.Position - theBall.Position).Magnitude
         local predictedPos = predictPosition(theBall.Velocity, theBall.Position)
         
-        -- Example threshold checks
-        if dist <= 60 and theBall.Velocity.Magnitude > 20 then
-            if holdingMB2 then
+        if dist <= 60 then
+            -- MB2 (Right Mouse / ButtonR1): Move to predicted position (requires velocity)
+            if holdingMB2 and theBall.Velocity.Magnitude > 20 then
                 humanoid:MoveTo(predictedPos)
-            elseif holdingMB1 and theBall.Velocity.Magnitude > 0.01 then
+            -- MB1 (Left Mouse / ButtonR2): Move to ball (no velocity check needed)
+            elseif holdingMB1 then
                 humanoid:MoveTo(theBall.Position)
             end
 
@@ -140,9 +141,9 @@ local function AutoGK()
     local function setWalkspeedAndProperties()
         local theBall = ball()
         if theBall and (char.HumanoidRootPart.Position - theBall.Position).Magnitude <= 60 then
-            humanoid.WalkSpeed = 16.5
+            humanoid.WalkSpeed = 18.5
         else
-            humanoid.WalkSpeed = 16
+            humanoid.WalkSpeed = 18
         end
         humanoidRootPart.CustomPhysicalProperties = PhysicalProperties.new(1, 0.300000012, 0.5, 1, 1)
     end

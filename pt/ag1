@@ -1,3 +1,4 @@
+--loadstring(game:HttpGet("https://pastebin.com/raw/FLWTqHGd"))()
 local function AutoGK()
     ------------------------------------------------------------------------
     -- SERVICES & REFERENCES
@@ -14,32 +15,30 @@ local function AutoGK()
 
     ------------------------------------------------------------------------
     -- FUNCTION: ball()
-    -- Return the soccer ball from the specified path.
+    -- Return the soccer ball Base part from the Ball model.
     ------------------------------------------------------------------------
     local function ball()
         local ballsFolder = workspace:FindFirstChild("Balls")
         if not ballsFolder then return nil end
 
-        local nearestBall = nil
+        local nearestBallBase = nil
         local shortestDistance = math.huge
 
         for _, ballModel in ipairs(ballsFolder:GetChildren()) do
             if ballModel:IsA("Model") and ballModel.Name == "Ball" then
-                local ballBase = ballModel:FindFirstChild("Base")
-                if ballBase and ballBase:IsA("BasePart") then
-                    -- Set the ball size to 3,3,3
-                    ballBase.Size = Vector3.new(3.6, 3.6, 3.6)
-                    
-                    local distance = (ballBase.Position - humanoidRootPart.Position).Magnitude
+                local basePart = ballModel:FindFirstChild("Base")
+                if basePart and basePart:IsA("BasePart") then
+                    local distance = (basePart.Position - humanoidRootPart.Position).Magnitude
                     if distance < shortestDistance then
                         shortestDistance = distance
-                        nearestBall = ballBase
+                        nearestBallBase = basePart
+                        --print(distance)
                     end
                 end
             end
         end
 
-        return nearestBall
+        return nearestBallBase
     end
 
     ------------------------------------------------------------------------
@@ -140,7 +139,7 @@ local function AutoGK()
     ------------------------------------------------------------------------
     local function setWalkspeedAndProperties()
         local theBall = ball()
-        if theBall and (char.HumanoidRootPart.Position - theBall.Position).Magnitude <= 80 then
+        if theBall and (char.HumanoidRootPart.Position - theBall.Position).Magnitude <= 60 then
             humanoid.WalkSpeed = 16.5
         else
             humanoid.WalkSpeed = 16
@@ -161,16 +160,16 @@ local function AutoGK()
 
     ------------------------------------------------------------------------
     -- KEYBINDS:
-    --   Left Mouse Hold => Move to ball
-    --   Right Mouse Hold => Move to predicted position
+    --   Left Mouse Hold OR ButtonR2 => Move to ball
+    --   Right Mouse Hold OR ButtonR1 => Move to predicted position
     --   End => Fully terminate
     ------------------------------------------------------------------------
     local inputBeganConnect = UserInputService.InputBegan:Connect(function(input, gp)
         if gp then return end
 
-        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonR2 then
+        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonR1 then
             holdingMB2 = true
-        elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+        elseif input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.ButtonR2 then
             holdingMB1 = true
         elseif input.KeyCode == Enum.KeyCode.End then
             scripton = false
@@ -189,9 +188,9 @@ local function AutoGK()
     local inputEndedConnect = UserInputService.InputEnded:Connect(function(input, gp)
         if gp then return end
 
-        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonR2 then
+        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonR1 then
             holdingMB2 = false
-        elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+        elseif input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.ButtonR2 then
             holdingMB1 = false
         end
     end)

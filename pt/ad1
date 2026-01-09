@@ -1,175 +1,201 @@
-local AutoDefense = true
-if AutoDefense then
-    -- Services
+--loadstring(game:HttpGet("https://pastebin.com/raw/FLWTqHGd"))()
+local function AutoGK()
+    ------------------------------------------------------------------------
+    -- SERVICES & REFERENCES
+    ------------------------------------------------------------------------
     local Players = game:GetService("Players")
     local RunService = game:GetService("RunService")
     local UserInputService = game:GetService("UserInputService")
     local VirtualInputManager = game:GetService("VirtualInputManager")
-    local Workspace = game:GetService("Workspace")
-    local LocalPlayer = Players.LocalPlayer
-    local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
-    -- Variables
-    local connections = {}
-    local scriptActive = true
-    local rightClickHeld = false
+    local player = Players.LocalPlayer
+    local char = player.Character or player.CharacterAdded:Wait()
+    local humanoid = char:WaitForChild("Humanoid")
+    local humanoidRootPart = char:WaitForChild("HumanoidRootPart")
 
-    -- Ball movement tracking
-    local previousBallPosition = nil
-    local lastBallUpdateTime = tick()
+    ------------------------------------------------------------------------
+    -- FUNCTION: ball()
+    -- Return the soccer ball Base part from the Ball model.
+    ------------------------------------------------------------------------
+    local function ball()
+        local ballsFolder = workspace:FindFirstChild("Balls")
+        if not ballsFolder then return nil end
 
-    -- Get the defending goal based on team
-    local function getDefendingGoal()
-        local team = LocalPlayer.Team and LocalPlayer.Team.Name
-        if team == "Spectator" or team == "Home" then
-            return Workspace.Pitch.Goals.Home.Detection
-        elseif team == "Away" then
-            return Workspace.Pitch.Goals.Away.Detection
-        end
-        return nil
-    end
-
-    -- Find the nearest ball
-    local function getNearestBall()
-        local ballsFolder = Workspace:FindFirstChild("Balls")
-        if not ballsFolder then
-            warn("Balls folder not found.")
-            return nil
-        end
-
-        local character = LocalPlayer.Character
-        if not character then return nil end
-
-        local rootPart = character:FindFirstChild("HumanoidRootPart")
-        if not rootPart then return nil end
-
-        local nearestBall = nil
+        local nearestBallBase = nil
         local shortestDistance = math.huge
 
         for _, ballModel in ipairs(ballsFolder:GetChildren()) do
-            if ballModel.Name == "Ball" and ballModel:IsA("Model") then
-                local ballBase = ballModel:FindFirstChild("Base")
-                if ballBase and ballBase:IsA("BasePart") then
-                    local distance = (ballBase.Position - rootPart.Position).Magnitude
+            if ballModel:IsA("Model") and ballModel.Name == "Ball" then
+                local basePart = ballModel:FindFirstChild("Base")
+                if basePart and basePart:IsA("BasePart") then
+                    local distance = (basePart.Position - humanoidRootPart.Position).Magnitude
                     if distance < shortestDistance then
                         shortestDistance = distance
-                        nearestBall = ballBase
+                        nearestBallBase = basePart
+                        --print(distance)
                     end
                 end
             end
         end
 
-        return nearestBall, shortestDistance
+        return nearestBallBase
     end
 
-    -- Calculate the best defensive position between the ball and goal
-    local function calculateDefensivePosition(targetBall, targetGoal)
-        if not targetBall or not targetGoal then return nil end
-
-        -- Ball position and velocity
-        local ballPosition = targetBall.Position
-        local ballVelocity = targetBall.Velocity
-        local predictionTime = 0.7 -- Predict 0.5 seconds ahead
-        local predictedBallPosition = ballPosition + (ballVelocity * predictionTime)
-
-        -- Calculate a point between the predicted ball position and the goal
-        local directionToGoal = (targetGoal.Position - predictedBallPosition).Unit
-        local defensivePosition = predictedBallPosition + (directionToGoal * 1) -- Adjust distance if needed
-
-        return defensivePosition, predictedBallPosition
+    ------------------------------------------------------------------------
+    -- HELPER: Zero out the Y component of a Vector3 (XZ plane only)
+    ------------------------------------------------------------------------
+    local function XZ(vec)
+        return Vector3.new(vec.X, 0, vec.Z)
     end
 
-    -- Auto Jump logic
-    local function autoJump(targetBall, predictedPos, distance)
-        if not Character or not Character:FindFirstChild("Head") then return end
+    ------------------------------------------------------------------------
+    -- ADVANCED KINEMATIC HELPERS (Mocked from typical ballistic/curve code)
+    ------------------------------------------------------------------------
+    local GRAVITY = Vector3.new(0, -workspace.Gravity, 0)
+    local CURVE_ACCEL = 0  -- Increase to see lateral swerve in X or Z.
 
-        local ballVelocity = targetBall.Velocity.Magnitude
-        if rightClickHeld and distance <= 60 and ballVelocity > 20 then
-            local headPosition = Character.Head.Position
-            local jumpThreshold = headPosition.Y + 1.5
+    local function timeCalculator(ballPosition, ballVelocity, rootPosition)
+        local horizontalVelocity = Vector3.new(ballVelocity.X, 0, ballVelocity.Z)
+        local horizontalDist = (XZ(rootPosition - ballPosition)).Magnitude
+        local horizontalSpeed = horizontalVelocity.Magnitude
 
-            if predictedPos.Y > jumpThreshold then
-                task.wait(0.1) -- Delay to avoid pre-jumping
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
-                task.wait(0.01)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+        if horizontalSpeed < 1e-3 then
+            return 0
+        end
+
+        local t = horizontalDist / horizontalSpeed
+        return t
+    end
+
+    local function oneDKinematics(pos, vel, accel, t)
+        return pos + (vel * t) + (0.5 * accel * (t * t))
+    end
+
+    ------------------------------------------------------------------------
+    -- NEW PREDICTION: predictPosition(ballVelocity, ballPosition)
+    ------------------------------------------------------------------------
+    local function predictPosition(ballVelocity, ballPosition)
+        local t = timeCalculator(ballPosition, ballVelocity, char.HumanoidRootPart.Position)
+
+        local curveAccel = Vector3.new(CURVE_ACCEL, GRAVITY.Y, 0)
+        local futurePos = oneDKinematics(ballPosition, ballVelocity, curveAccel, t)
+
+        return futurePos
+    end
+
+    ------------------------------------------------------------------------
+    -- SCRIPT TOGGLE + RENDER LOGIC
+    ------------------------------------------------------------------------
+    local scripton = true
+    local connections = {}
+    local holdingMB1 = false
+    local holdingMB2 = false
+
+    local function onRenderStep()
+        if not scripton then return end
+
+        local theBall = ball()
+        if not theBall then
+            return
+        end
+
+        local dist = (char.HumanoidRootPart.Position - theBall.Position).Magnitude
+        local predictedPos = predictPosition(theBall.Velocity, theBall.Position)
+        
+        -- Example threshold checks
+        if dist <= 60 and theBall.Velocity.Magnitude > 20 then
+            if holdingMB2 then
+                humanoid:MoveTo(predictedPos)
+            elseif holdingMB1 and theBall.Velocity.Magnitude > 0.01 then
+                humanoid:MoveTo(theBall.Position)
             end
-        end
-    end
 
-    -- Move to defensive position
-    local function autoDefend()
-        local targetGoal = getDefendingGoal()
-        local targetBall, distance = getNearestBall()
-        if not (targetGoal and targetBall) then return end
+            -- Add jump threshold logic
+            if holdingMB1 or holdingMB2 then
+                local headPosition = char.Head.Position
+                local jumpThreshold = headPosition.Y + 1
+                if predictedPos.Y > jumpThreshold then
+                    task.wait(0.1) -- optional wait cuz niggas say i pre jump
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                    task.wait(0.01)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+                end
 
-        -- Predict ball movement
-        local now = tick()
-        local dt = now - lastBallUpdateTime
-        lastBallUpdateTime = now
-
-        local currentBallPosition = targetBall.Position
-        local computedVelocity = Vector3.new(0, 0, 0)
-
-        if previousBallPosition then
-            computedVelocity = (currentBallPosition - previousBallPosition) / dt
-        end
-        previousBallPosition = currentBallPosition
-
-        -- Move to best defensive position
-        local humanoid = Character:FindFirstChild("Humanoid")
-        local rootPart = Character:FindFirstChild("HumanoidRootPart")
-
-        if humanoid and rootPart then
-            local defensivePosition, predictedBallPosition = calculateDefensivePosition(targetBall, targetGoal)
-            if defensivePosition then
-                local moveDirection = (defensivePosition - rootPart.Position).Unit
-                humanoid:Move(Vector3.new(moveDirection.X, 0, moveDirection.Z))
-
-                -- Check if a jump is needed
-                autoJump(targetBall, predictedBallPosition, distance)
-            end
-        end
-    end
-
-    -- Main loop
-    local function mainLoop()
-        table.insert(connections, RunService.RenderStepped:Connect(function()
-            if scriptActive and rightClickHeld then
-                autoDefend()
-            end
-        end))
-    end
-
-    -- Detect Mouse Button 2 (Right Click) Hold or DPadLeft
-    table.insert(connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonR2 then
-            rightClickHeld = true
-        end
-    end))
-
-    table.insert(connections, UserInputService.InputEnded:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonR2 then
-            rightClickHeld = false
-        end
-    end))
-
-    -- Key listener for terminating script
-    table.insert(connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-        if input.KeyCode == Enum.KeyCode.End then
-            scriptActive = false
-            for _, connection in pairs(connections) do
-                if connection and connection.Disconnect then
-                    connection:Disconnect()
+                -- Tap 'W' key to send the ball forward (i think this helps i dont know)
+                if dist <= 5 then -- Adjust this threshold as needed
+                    --VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
+                    --task.wait(0.05)
+                    --VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
                 end
             end
-            connections = nil
         end
-    end))
+    end
 
-    -- Start the main loop
-    mainLoop()
+    local steppedConnect = RunService.RenderStepped:Connect(onRenderStep)
+    table.insert(connections, steppedConnect)
+
+    ------------------------------------------------------------------------
+    -- SET WALKSPEED AND PROPERTIES
+    ------------------------------------------------------------------------
+    local function setWalkspeedAndProperties()
+        local theBall = ball()
+        if theBall and (char.HumanoidRootPart.Position - theBall.Position).Magnitude <= 60 then
+            humanoid.WalkSpeed = 16.5
+        else
+            humanoid.WalkSpeed = 16
+        end
+        humanoidRootPart.CustomPhysicalProperties = PhysicalProperties.new(1, 0.300000012, 0.5, 1, 1)
+    end
+
+    local updateWalkspeed = true
+    local function updateWalkspeedLoop()
+        while updateWalkspeed do
+            setWalkspeedAndProperties()
+            wait(0.01)
+        end
+    end
+
+    local updateWalkspeedThread = coroutine.create(updateWalkspeedLoop)
+    coroutine.resume(updateWalkspeedThread)
+
+    ------------------------------------------------------------------------
+    -- KEYBINDS:
+    --   Left Mouse Hold OR ButtonR2 => Move to ball
+    --   Right Mouse Hold OR ButtonR1 => Move to predicted position
+    --   End => Fully terminate
+    ------------------------------------------------------------------------
+    local inputBeganConnect = UserInputService.InputBegan:Connect(function(input, gp)
+        if gp then return end
+
+        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonR1 then
+            holdingMB2 = true
+        elseif input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.ButtonR2 then
+            holdingMB1 = true
+        elseif input.KeyCode == Enum.KeyCode.End then
+            scripton = false
+            updateWalkspeed = false
+            humanoidRootPart.CustomPhysicalProperties = nil
+
+            -- Disconnect all connections
+            for _, conn in ipairs(connections) do
+                conn:Disconnect()
+            end
+            table.clear(connections)
+        end
+    end)
+    table.insert(connections, inputBeganConnect)
+
+    local inputEndedConnect = UserInputService.InputEnded:Connect(function(input, gp)
+        if gp then return end
+
+        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonR1 then
+            holdingMB2 = false
+        elseif input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.ButtonR2 then
+            holdingMB1 = false
+        end
+    end)
+    table.insert(connections, inputEndedConnect)
 end
+
+-- Run in separate thread
+spawn(AutoGK)

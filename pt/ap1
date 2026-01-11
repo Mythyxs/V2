@@ -226,7 +226,7 @@ local b = game.UserInputService.InputBegan:connect(function(input)
 end)
 
 local l = game.UserInputService.InputBegan:connect(function(input)
-    if input.KeyCode == Enum.KeyCode.KeypadSix then
+    if input.KeyCode == Enum.KeyCode.Z then
         hold = true
         goaltarget = getClosestPart()
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
@@ -235,7 +235,7 @@ local l = game.UserInputService.InputBegan:connect(function(input)
 end)
 
 local c = game.UserInputService.InputEnded:connect(function(input)
-    if input.KeyCode == Enum.KeyCode.KeypadSix then
+    if input.KeyCode == Enum.KeyCode.Z then
         hold = false
         goaltarget = nil
         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Three, false, game)

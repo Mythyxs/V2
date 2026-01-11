@@ -184,7 +184,7 @@ local runLoop = game:GetService("RunService").RenderStepped:Connect(function(dt)
             local vector, onScreen = workspace.CurrentCamera:WorldToScreenPoint(goaltarget-heightdiff)
             local magnitudeX = mouse.X - vector.X
             local magnitudeY = mouse.Y - vector.Y
-            mousemoverel(-magnitudeX*0.5,-magnitudeY*0.5)
+            mousemoverel(-magnitudeX*0.2,-magnitudeY*0.2)
             if ball:GetAttribute("Owner") == game.Players.LocalPlayer.UserId then
                 local offset = 4.5
                 if goaltarget.Z>-80 then

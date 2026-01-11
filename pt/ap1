@@ -1,0 +1,283 @@
+local function XZ(V)
+	return Vector3.new(V.X, 0, V.Z)
+end
+local VirtualInputManager = Instance.new('VirtualInputManager')
+local targets = {}
+local mouse = game:GetService("Players").LocalPlayer:GetMouse()
+
+do
+	local a = workspace:GetDescendants()
+
+	for x = 1, #a do
+		if (a[x]:IsA("Part") and a[x].Name == "Part" and a[x].Parent.Name == "Woodwork" and math.round(a[x].Size.Z) == 1 and math.round(a[x].Size.Y) == 14) then
+			table.insert(targets, a[x].Position+Vector3.new(0,-18,0))
+		end
+	end
+end
+
+local mouse = game.Players.LocalPlayer:GetMouse()
+local Camera = workspace.CurrentCamera
+
+function BallHandler()
+	local target = nil
+	local distance = math.huge
+
+	for i,v in next, game.Players:GetChildren() do
+		if v and v.Character and v~=game.Players.LocalPlayer and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("HumanoidRootPart") and v.Character:FindFirstChildOfClass("Humanoid") and v.Character:FindFirstChildOfClass("Humanoid").Health>0 then
+			
+            if v.Team~=game.Players.LocalPlayer.Team then
+                
+
+                local plrdist = game.Players.LocalPlayer:DistanceFromCharacter(v.Character:FindFirstChildOfClass('Humanoid').RootPart.CFrame.p)
+                if plrdist < distance then
+                    target = v
+                    distance = plrdist
+                end
+    
+            end
+
+		end
+	end
+
+	return target
+end
+
+local function getClosestPart()
+    local mousePos = Vector2.new(mouse.X, 0)
+    local closestPart = nil
+    local closestDistance = math.huge
+
+    for _, target in pairs(targets) do
+        if target then  -- Ensure target is a part
+            local targetPos = target
+            
+			local vector, onScreen = workspace.CurrentCamera:WorldToScreenPoint(target)
+			if onScreen then
+				local distance = (mousePos - Vector2.new(vector.X, vector.Y)).Magnitude
+				if distance < closestDistance then
+					closestDistance = distance
+					closestPart = target
+				end
+			end
+            
+        end
+    end
+
+    return closestPart
+end
+
+local function getTarget()
+    local mousePos = Vector2.new(mouse.X, 0)
+    local closestPart = nil
+    local closestDistance = math.huge
+
+    for _, target in pairs(game.Players:GetChildren()) do
+        if target and target.Character and target.Team == game.Players.LocalPlayer.Team and target ~= game.Players.LocalPlayer then 
+
+			local vector, onScreen = workspace.CurrentCamera:WorldToScreenPoint(target.Character.HumanoidRootPart.Position)
+			if onScreen then
+				local distance = (mousePos - Vector2.new(vector.X, vector.Y)).Magnitude
+				if distance < closestDistance then
+					closestDistance = distance
+					closestPart = target
+				end
+			end
+            
+        end
+    end
+
+    return closestPart
+end
+
+
+local function ball()
+	local nearestball = nil
+	local shortestDistance = math.huge
+	
+
+	local messiFolder = workspace:FindFirstChild("Balls")
+	if not messiFolder then return nil end
+
+	for _, obj in pairs(messiFolder:GetChildren()) do
+		local football = obj.Base
+		if football and football.ClassName == "Part" then
+            --if football:GetAttribute("Owner") == game.Players.LocalPlayer.UserId then
+                local balldistance = (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - football.Position).Magnitude
+                if balldistance < shortestDistance then
+                    shortestDistance = balldistance
+                    nearestball = football
+                end
+           -- end
+		end
+	end
+
+	return nearestball
+end
+
+local function MoveTo(POS)
+	local humanoid = game.Players.LocalPlayer.Character.Humanoid
+
+
+	humanoid:MoveTo(POS)
+end
+
+local connections = {}
+
+local hold = false
+local fhold = false
+local hold3 = false
+
+local teammate = nil
+local goaltarget = nil
+
+local elapsed = 0
+
+local runLoop = game:GetService("RunService").RenderStepped:Connect(function(dt)
+    pcall(function()
+        local ball = ball()
+        local defender = BallHandler()
+
+        if fhold and ball then
+            MoveTo(ball.Position)
+        end
+
+        
+        --[[
+        if defender and ball then
+            local defenderunit = (XZ(ball.Position-defender.Character.HumanoidRootPart.Position)).Unit*3
+            local spot = game.Players.LocalPlayer.Character.HumanoidRootPart.Position+defenderunit
+
+            local rayLength = (ball.Position - spot).magnitude
+            local relativeballpos = (defender.Character.HumanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).unit
+            local rightvec = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame.RightVector
+            local dot = relativeballpos:Dot(rightvec)
+            --print(dot)
+
+            for i = 1, 2 do
+                local ray = Ray.new(spot + Vector3.new(i * 1, 0, 0), (ball.Position - spot).unit * rayLength)
+                local hitPart, hitPosition = workspace:FindPartOnRay(ray, ball)
+                if hitPart~=nil then
+                    if hitPart.Parent then
+                        if hitPart.Parent==game.Players.LocalPlayer.Character then
+                            if dot<0 then
+                                spot = game.Players.LocalPlayer.Character.HumanoidRootPart.Position+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame.RightVector*20
+                            else
+                                spot = game.Players.LocalPlayer.Character.HumanoidRootPart.Position+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame.RightVector*-20
+                            end
+                        end
+                    end
+                end
+            end
+            
+
+            part.Position = spot
+            local displacement = (spot-ball.Position).Unit*30
+            if hold3 and ball:GetAttribute("Owner") == game.Players.LocalPlayer.UserId then
+                ball.Velocity = Vector3.new(0,0,0)
+                ball.Velocity = displacement
+            end   
+        end
+        ]]
+
+        if hold and ball and goaltarget~=nil then
+            local heightdiff = Vector3.new(0,ball.Position.Y-goaltarget.Y,0).Unit*5
+            local vector, onScreen = workspace.CurrentCamera:WorldToScreenPoint(goaltarget-heightdiff)
+            local magnitudeX = mouse.X - vector.X
+            local magnitudeY = mouse.Y - vector.Y
+            mousemoverel(-magnitudeX*0.5,-magnitudeY*0.5)
+            if ball:GetAttribute("Owner") == game.Players.LocalPlayer.UserId then
+                local offset = 4.5
+                if goaltarget.Z>-80 then
+                    offset = -4.5
+                end
+                if (ball.Velocity).Magnitude>50 then
+                    ball.Velocity=(ball.Velocity*0.9+((ball.Velocity).Magnitude*(XZ(goaltarget+Vector3.new(0,0,offset) - ball.Position).Unit)+Vector3.new(0,ball.Velocity.Y,0))*0.1)
+                end
+            end
+        end
+        
+        if hold3 and ball and teammate~=nil then
+            if ball:GetAttribute("Owner") == game.Players.LocalPlayer.UserId then
+                local speed = (ball.Velocity).Magnitude*XZ(teammate.Character.HumanoidRootPart.Position - ball.Position).Unit+Vector3.new(0,ball.Velocity.Y,0)
+                if (ball.Velocity).Magnitude>50 and (ball.Velocity).Magnitude>90 then
+                    elapsed = elapsed + dt*1000 
+                    ball.Velocity=(ball.Velocity*0.994+speed*0.006)
+                    if elapsed > 10 then
+                        ball.Velocity=(ball.Velocity*0.995+speed*0.005)
+                    end
+                end
+
+            end
+        else
+            elapsed = 0
+        end
+    end)
+end)
+
+local b = game.UserInputService.InputBegan:connect(function(input)
+	if input.KeyCode == Enum.KeyCode.End then
+		pcall(function()
+			for _, connection in ipairs(connections) do
+				connection:Disconnect()
+			end
+        
+		end)
+	end
+end)
+
+local l = game.UserInputService.InputBegan:connect(function(input)
+    if input.KeyCode == Enum.KeyCode.KeypadSix then
+        hold = true
+        goaltarget = getClosestPart()
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Three, false, game)
+    end
+end)
+
+local c = game.UserInputService.InputEnded:connect(function(input)
+    if input.KeyCode == Enum.KeyCode.KeypadSix then
+        hold = false
+        goaltarget = nil
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Three, false, game)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
+    end
+end)
+
+local a = game.UserInputService.InputBegan:connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Eight then
+        fhold = true
+    end
+end)
+
+local s = game.UserInputService.InputEnded:connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Eight then
+        fhold = false
+    end
+end)
+
+local ce = game.UserInputService.InputBegan:connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		hold3 = true
+        teammate = getTarget()
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Three, false, game)
+	end
+end)
+
+local de = game.UserInputService.InputEnded:connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		hold3 = false
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Three, false, game)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
+        teammate = nil
+	end
+end)
+
+table.insert(connections, ce)
+table.insert(connections, de)
+table.insert(connections, l)
+table.insert(connections, c)
+table.insert(connections, runLoop)
+table.insert(connections, b)
+table.insert(connections, a)
+table.insert(connections, s)

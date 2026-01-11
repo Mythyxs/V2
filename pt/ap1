@@ -180,7 +180,7 @@ local runLoop = game:GetService("RunService").RenderStepped:Connect(function(dt)
         ]]
 
         if hold and ball and goaltarget~=nil then
-            local heightdiff = Vector3.new(0,ball.Position.Y-goaltarget.Y,0).Unit*5
+            local heightdiff = Vector3.new(0,ball.Position.Y-goaltarget.Y,0).Unit*7
             local vector, onScreen = workspace.CurrentCamera:WorldToScreenPoint(goaltarget-heightdiff)
             local magnitudeX = mouse.X - vector.X
             local magnitudeY = mouse.Y - vector.Y

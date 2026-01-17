@@ -242,7 +242,7 @@ local b = game.UserInputService.InputBegan:connect(function(input)
 end)
 
 local l = game.UserInputService.InputBegan:connect(function(input)
-    if input.KeyCode == Enum.KeyCode.KeypadSix then
+    if input.KeyCode == Enum.KeyCode.Z then
         hold = true
         goaltarget = getClosestPart()
         delay(0.1, function()
@@ -262,7 +262,7 @@ local c = game.UserInputService.InputEnded:connect(function(input)
 end)
 
 local a = game.UserInputService.InputBegan:connect(function(input)
-    if input.KeyCode == Enum.KeyCode.Z then
+    if input.KeyCode == Enum.KeyCode.Eight then
         fhold = true
     end
 end)

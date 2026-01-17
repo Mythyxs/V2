@@ -10,7 +10,7 @@ do
 
 	for x = 1, #a do
 		if (a[x]:IsA("Part") and a[x].Name == "Part" and a[x].Parent.Name == "Woodwork" and math.round(a[x].Size.Z) == 1 and math.round(a[x].Size.Y) == 14) then
-			table.insert(targets, a[x].Position+Vector3.new(0,-18,0))
+			table.insert(targets, a[x].Position-a[x].CFrame.LookVector*0.001+Vector3.new(0,-18,0))
 		end
 	end
 end
@@ -53,7 +53,7 @@ local function getClosestPart()
             
 			local vector, onScreen = workspace.CurrentCamera:WorldToScreenPoint(target)
 			if onScreen then
-				local distance = (mousePos - Vector2.new(vector.X, vector.Y)).Magnitude
+				local distance = (mousePos - Vector2.new(vector.X, 0)).Magnitude
 				if distance < closestDistance then
 					closestDistance = distance
 					closestPart = target
@@ -76,7 +76,7 @@ local function getTarget()
 
 			local vector, onScreen = workspace.CurrentCamera:WorldToScreenPoint(target.Character.HumanoidRootPart.Position)
 			if onScreen then
-				local distance = (mousePos - Vector2.new(vector.X, vector.Y)).Magnitude
+				local distance = (mousePos - Vector2.new(vector.X, 0)).Magnitude
 				if distance < closestDistance then
 					closestDistance = distance
 					closestPart = target
@@ -180,20 +180,34 @@ local runLoop = game:GetService("RunService").RenderStepped:Connect(function(dt)
         ]]
 
         if hold and ball and goaltarget~=nil then
-            local heightdiff = Vector3.new(0,ball.Position.Y-goaltarget.Y,0).Unit*7
-            local vector, onScreen = workspace.CurrentCamera:WorldToScreenPoint(goaltarget-heightdiff)
+            local actualtarget = goaltarget
+            local heightdiff = Vector3.new(0,ball.Position.Y-goaltarget.Y,0)
+            if heightdiff.Y<0 then
+                heightdiff = Vector3.new(0,0,0)
+            end
+            local vector, onScreen = workspace.CurrentCamera:WorldToScreenPoint(actualtarget-heightdiff)
             local magnitudeX = mouse.X - vector.X
             local magnitudeY = mouse.Y - vector.Y
+
             mousemoverel(-magnitudeX*0.2,-magnitudeY*0.2)
+            if ball:GetAttribute("Owner") ~= game.Players.LocalPlayer.UserId then
+                game.Players.LocalPlayer.Character.Head.Size = Vector3.new(10,4,4)
+                game.Players.LocalPlayer.Character.Head.CanCollide = false
+                game.Players.LocalPlayer.Character.Head.Transparency = 1
+            end
             if ball:GetAttribute("Owner") == game.Players.LocalPlayer.UserId then
-                local offset = 4.5
+                local offset = 3
                 if goaltarget.Z>-80 then
-                    offset = -4.5
+                    offset = -3
                 end
                 if (ball.Velocity).Magnitude>50 then
-                    ball.Velocity=(ball.Velocity*0.9+((ball.Velocity).Magnitude*(XZ(goaltarget+Vector3.new(0,0,offset) - ball.Position).Unit)+Vector3.new(0,ball.Velocity.Y,0))*0.1)
+                    ball.Velocity=(ball.Velocity*0.8+(130*(XZ(goaltarget+Vector3.new(0,0,offset) - ball.Position).Unit)+Vector3.new(0,ball.Velocity.Y,0))*0.2)
                 end
             end
+        else
+            game.Players.LocalPlayer.Character.Head.Size = Vector3.new(2,1,1)
+            game.Players.LocalPlayer.Character.Head.CanCollide = true
+            game.Players.LocalPlayer.Character.Head.Transparency = 0
         end
         
         if hold3 and ball and teammate~=nil then
@@ -220,17 +234,21 @@ local b = game.UserInputService.InputBegan:connect(function(input)
 			for _, connection in ipairs(connections) do
 				connection:Disconnect()
 			end
-        
+            game.Players.LocalPlayer.Character.Head.Size = Vector3.new(2,1,1)
+            game.Players.LocalPlayer.Character.Head.Transparency = 0
+            game.Players.LocalPlayer.Character.Head.CanCollide = true
 		end)
 	end
 end)
 
 local l = game.UserInputService.InputBegan:connect(function(input)
-    if input.KeyCode == Enum.KeyCode.Z then
+    if input.KeyCode == Enum.KeyCode.KeypadSix then
         hold = true
         goaltarget = getClosestPart()
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Three, false, game)
+        delay(0.1, function()
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Three, false, game)
+        end)
     end
 end)
 
@@ -244,7 +262,7 @@ local c = game.UserInputService.InputEnded:connect(function(input)
 end)
 
 local a = game.UserInputService.InputBegan:connect(function(input)
-    if input.KeyCode == Enum.KeyCode.Eight then
+    if input.KeyCode == Enum.KeyCode.Z then
         fhold = true
     end
 end)

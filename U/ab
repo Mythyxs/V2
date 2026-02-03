@@ -1,0 +1,459 @@
+-- the HOLY GRAIL presented by shemia jones truly
+local runservice = game:GetService('RunService')
+local userinputservice = game:GetService('UserInputService')
+local players = game:GetService('Players')
+local replicatedstorage = game:GetService('ReplicatedStorage')
+local player = players.LocalPlayer
+local framework = replicatedstorage:WaitForChild('Framework')
+local playervalues = framework:WaitForChild('PlayerValues')
+local remoteevents = framework:WaitForChild('RemoteEvents')
+
+local blockdelay = 0.1
+local UIMode = false
+
+local mode = 2 -- 1 passive 2 block 3 counter
+_G.currentmode = mode
+local enabled = true
+local blockcd = 0
+local parryTTL: { [string]: number } = {}
+local connections = {}
+local currentopponent
+local lastblock = nil
+local event = remoteevents:WaitForChild(tostring(player.UserId) .. 'MainFrame')
+
+local movelist
+local success, result = pcall(function()
+    local SharedModules = replicatedstorage:WaitForChild('SharedModules')
+    local AnimationsUndisputed = SharedModules:WaitForChild('AnimationsUndisputed')
+    local movelistmodule = AnimationsUndisputed:WaitForChild('MMA Movelist')
+    local movelistdata = require(movelistmodule)
+
+    return movelistdata
+end)
+
+if not success then
+    warn('we fried twin:', result)
+    movelist = {}
+else
+    movelist = result
+end
+
+local targetflags = {
+    Head = { legcheck = false, bodycheck = false }, -- blockhigh
+    Torso = { legcheck = false, bodycheck = true }, -- blocklow
+    Legs = { legcheck = true, bodycheck = false }, -- legcheck
+}
+
+local function fixID(theID): string?
+    local t = typeof(theID)
+    if t == 'number' then
+        local s = tostring(theID)
+        if #s > 0 then
+            return 'rbxassetid://' .. s
+        end
+        return nil
+    elseif t == 'string' then
+        local digits = theID:match('(%d+)')
+        if digits then
+            return 'rbxassetid://' .. digits
+        end
+        return nil
+    end
+    return nil
+end
+
+local function collectIDs(val: any, out: { [string]: true }, seen: { [table]: true }?)
+    local ty = typeof(val)
+    if ty == 'number' or ty == 'string' then
+        local id = fixID(val)
+        if id then
+            out[id] = true
+        end
+        return
+    end
+    if ty == 'table' then
+        if not seen then
+            seen = {}
+        end
+        if seen[val] then
+            return
+        end
+        seen[val] = true
+        for _, sub in pairs(val) do
+            collectIDs(sub, out, seen)
+        end
+    end
+end
+
+local map: { [string]: { legcheck: boolean, bodycheck: boolean } } = {}
+do
+    local processedmoves = 0
+    local moveswithtargets = 0
+    local moveswithanims = 0
+    local totalIDs = 0
+
+    for movename, movedata in pairs(movelist) do
+        processedmoves += 1
+
+        local target = movedata and movedata.Target
+        if target then
+            moveswithtargets += 1
+        end
+
+        local flags = targetflags[target]
+        if flags and movedata.Type ~= 'Clinch' then
+            local anims = movedata.Animations
+            if typeof(anims) == 'table' then
+                moveswithanims += 1
+
+                local ids: { [string]: true } = {}
+                collectIDs(anims, ids)
+
+                local idcount = 0
+                for id, _ in pairs(ids) do
+                    idcount += 1
+                    totalIDs += 1
+                    map[id] = {
+                        legcheck = flags.legcheck,
+                        bodycheck = flags.bodycheck,
+                    }
+                end
+            end
+        end
+    end
+
+    -- whitelisted
+    map['rbxassetid://7127993674'] =
+        { legcheck = false, bodycheck = false } -- Clinch (R) BlockHigh
+    map['rbxassetid://7127993447'] =
+        { legcheck = false, bodycheck = false } -- Clinch (L) BlockHigh
+    totalIDs += 2
+end
+
+local bankai = false
+local function dprint(...)
+    if bankai then
+        print('we have a fucking problem', ...)
+    end
+end
+
+local humanoidrootpart
+local function onlocalcharadded(char)
+    humanoidrootpart = char:WaitForChild('HumanoidRootPart')
+end
+if player.Character then
+    onlocalcharadded(player.Character)
+end
+player.CharacterAdded:Connect(onlocalcharadded)
+
+local function getroot(p: Player): BasePart?
+    local c = p.Character
+    if not c then
+        return nil
+    end
+    return c:FindFirstChild('HumanoidRootPart') :: BasePart?
+end
+
+local function withinrange2(a: Vector3, b: Vector3, maxDist: number): boolean
+    local diff = a - b
+    return diff:Dot(diff) <= (maxDist * maxDist)
+end
+
+do
+    local myvals = playervalues:WaitForChild(tostring(player.UserId)):WaitForChild('Values')
+    local opponentobj = myvals:WaitForChild('Opponent')
+
+    local function updateopponent(val)
+        if val and val.Parent and players:FindFirstChild(val.Name) then
+            currentopponent = players[val.Name]
+        else
+            currentopponent = nil
+        end
+    end
+
+    updateopponent(opponentobj.Value)
+    table.insert(connections, opponentobj:GetPropertyChangedSignal('Value'):Connect(function()
+            updateopponent(opponentobj.Value)
+        end)
+    )
+end
+
+local function waitforfalse(boolval)
+    if not (boolval and boolval:IsA('BoolValue')) then
+        return
+    end
+    if not boolval.Value then
+        return
+    end
+    local finished = false
+    local conn
+    conn = boolval:GetPropertyChangedSignal('Value'):Connect(function()
+        if not boolval.Value then
+            finished = true
+            conn:Disconnect()
+        end
+    end)
+
+    local starttime = os.clock()
+    while not finished and (os.clock() - starttime) < 10 do
+        boolval.Changed:Wait()
+    end
+end
+
+local function getopponentisstriking()
+    if not currentopponent then
+        return
+    end
+    local oppuserid = currentopponent.UserId
+    local oppfolder = playervalues:FindFirstChild(tostring(oppuserid))
+    if not oppfolder then
+        return
+    end
+    local vals = oppfolder:FindFirstChild('Values')
+    if not vals then
+        return
+    end
+    return vals:FindFirstChild('IsStriking')
+end
+
+local function isstriking_true_for_duration(isstriking, duration)
+    if not (isstriking and isstriking:IsA('BoolValue')) then
+        return false
+    end
+    if not isstriking.Value then
+        return false
+    end
+
+    local start = os.clock()
+    while os.clock() - start < duration do
+        if not isstriking.Value then
+            return false
+        end
+        runservice.Heartbeat:Wait()
+    end
+    return isstriking.Value
+end
+
+local function getstance()
+    local myvals = playervalues:FindFirstChild(tostring(player.UserId))
+    if myvals then
+        local vals = myvals:FindFirstChild('Values')
+        if vals then
+            local stance = vals:FindFirstChild('Stance')
+            if stance then
+                return stance.Value
+            end
+        end
+    end
+    return 'Right'
+end
+
+local function islocalplayerattacking(): boolean
+    local character = player.Character
+    if not character then
+        return false
+    end
+    
+    local humanoid = character:FindFirstChild('Humanoid')
+    if not humanoid then
+        return false
+    end
+    
+    for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+        if track.Animation and track.Animation.AnimationId then
+            local animId = fixID(track.Animation.AnimationId)
+            if animId and map[animId] then
+                return true
+            end
+        end
+    end
+    
+    return false
+end
+
+local function endblocks(newblock)
+    if lastblock and lastblock ~= newblock then
+        local character = player.Character
+        if character then
+            local humanoid = character:FindFirstChild('Humanoid')
+            if humanoid then
+                for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+                    if track.Animation and track.Animation.AnimationId == 'rbxassetid://7127985687' then -- block anim dont fucking touch this nigga
+                        local endargs = { { Type = 'EndBlock' } }
+                        event:FireServer(unpack(endargs))
+                        -- task.wait(0.01)
+                        break
+                    end
+                end
+            end
+        end
+    end
+    lastblock = newblock
+end
+
+local function ready(animId: string): boolean
+    local now = os.clock()
+    if (parryTTL[animId] or 0) <= now then
+parryTTL[animId] = now + blockcd
+        return true
+    end
+    return false
+end
+
+local function reset()
+    table.clear(parryTTL)
+    enabled = true
+end
+
+local function cleanup()
+    for _, conn in ipairs(connections) do
+        conn:Disconnect()
+    end
+    connections = {}
+    table.clear(parryTTL)
+end
+
+local function onanimplayed(otherplayer, track)
+    if not enabled or otherplayer ~= currentopponent then
+        return
+
+    end
+    if mode == 1 then
+        return
+    end -- passive
+    if not track or not track.Animation then
+        return
+    end
+
+    local raw = track.Animation.AnimationId
+    if not raw then
+        return
+    end
+
+    local animId = fixID(raw)
+    if not animId then
+        return
+    end
+
+    if bankai and not map[animId] then
+        dprint('no map for', raw, '→', animId)
+    end
+
+    local data = map[animId]
+    if not data or not ready(animId) then
+        return
+    end
+
+    -- Check if local player is currently attacking - if so, don't block/counter
+    if islocalplayerattacking() then
+        return
+    end
+
+    local otherroot = getroot(otherplayer)
+    if humanoidrootpart and otherroot then
+        local diff = otherroot.Position - humanoidrootpart.Position
+        local dist2 = diff:Dot(diff)
+        local maxdistance = (mode == 3) and 30 or 56 -- 5.477^2 counter 7.483^2 block
+        if dist2 <= maxdistance then
+            if mode == 2 then
+                -- block
+                task.delay(blockdelay, function()
+                    if data.bodycheck then
+                        endblocks('BlockLow')
+                        local args = { { Move = 'BlockLow', Type = 'Block' } }
+                        event:FireServer(unpack(args))
+                    elseif data.legcheck then
+                        endblocks('LegCheck')
+                        local args = { { Move = 'LegCheck', Type = 'Block' } }
+                        event:FireServer(unpack(args))
+                    else
+                        endblocks('BlockHigh')
+                        local args = { { Move = 'BlockHigh', Type = 'Block' } }
+                        event:FireServer(unpack(args))
+                    end
+
+                    local isstriking = getopponentisstriking()
+                    if
+                        isstriking
+                        and isstriking_true_for_duration(isstriking, 0.2)
+                    then
+                        waitforfalse(isstriking)
+                    end
+                end)
+            elseif mode == 3 then
+                -- counter
+                local stance = getstance()
+                local movename = (stance == 'Right')
+                -- this is where u can change which move to use for counter slut
+                        and 'HeavyLeftSpecialStrikeLeftStrike'
+                    or 'HeavyRightSpecialStrike'
+                local args = { { Move = movename, Type = 'Strike' } }
+                event:FireServer(unpack(args))
+
+                local isstriking = getopponentisstriking()
+                if
+                    isstriking and isstriking_true_for_duration(isstriking, 0.2) -- could go 0 idk
+                then
+                    waitforfalse(isstriking)
+                end
+            end
+        end
+    end
+end
+
+local function hookplayer(p)
+    if p == player then
+        return
+    end
+    local function oncharacter(char)
+        local humanoid = char:WaitForChild('Humanoid')
+        table.insert(
+            connections,
+            humanoid.AnimationPlayed:Connect(function(track)
+                onanimplayed(p, track)
+            end)
+        )
+    end
+    table.insert(connections, p.CharacterAdded:Connect(oncharacter))
+    if p.Character then
+        oncharacter(p.Character)
+    end
+end
+
+for _, p in ipairs(players:GetPlayers()) do
+    hookplayer(p)
+end
+table.insert(connections, players.PlayerAdded:Connect(hookplayer))
+
+table.insert(
+    connections,
+    players.PlayerRemoving:Connect(function(p)
+        if p == currentopponent then
+            currentopponent = nil
+        end
+    end)
+)
+
+-- change keybinds here
+table.insert(
+    connections,
+    userinputservice.InputBegan:Connect(function(input, processed)
+        if processed then
+            return
+        end
+        if input.KeyCode == Enum.KeyCode.Escape then
+            reset()
+        elseif input.KeyCode == Enum.KeyCode.End then
+            cleanup()
+        elseif input.KeyCode == Enum.KeyCode.One then --blockmode
+            mode = 2
+            _G.currentmode = mode
+        elseif input.KeyCode == Enum.KeyCode.Two then --countermode
+            mode = 3
+            _G.currentmode = mode
+        elseif input.KeyCode == Enum.KeyCode.Three then --passive
+            mode = 1
+            _G.currentmode = mode
+        end
+    end)
+)

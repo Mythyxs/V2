@@ -387,7 +387,7 @@ end
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
-
+--[[
 local function AutoGK()
     local VirtualInputManager = Instance.new('VirtualInputManager')
     local players = game.Players
@@ -578,12 +578,6 @@ local function AutoGK()
 
         local balldistance = ((FinalPosition-FinalAccelerationPosition)).Magnitude
 
-        --[[
-        local FinalPosition2 = target.Position+target.Velocity
-
-        local relativeballpos2 = (FinalPosition2 - playerpos).unit
-        local dot2 = relativeballpos2:Dot(rightvec)
-        ]]--
        -- print(balldistance)
         local speed = XZ(target.Velocity).Magnitude
         --print(speed)
@@ -724,7 +718,7 @@ end
 spawn(AutoGK)
 
 
-
+--]]
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 -- Main loop to periodically update stamina, existing balls, and check for "LeaveAVouch"

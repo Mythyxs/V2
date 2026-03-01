@@ -1432,6 +1432,10 @@ function Compkiller:CustomIconHighlight()
 end;
 
 function Compkiller:_SetNilP(Ins: Instance , Parent: Instance)
+	if not Ins or typeof(Ins) ~= "Instance" then
+		return;
+	end;
+
 	Compkiller.WindowsNil = Compkiller.WindowsNil or {};
 	Compkiller.NilFolder = Compkiller.NilFolder or Instance.new('Folder');
 
@@ -1441,7 +1445,10 @@ function Compkiller:_SetNilP(Ins: Instance , Parent: Instance)
 		Compkiller.WindowsNil[Ins] = win;
 	end;
 
-	Ins.Parent = Parent or Compkiller.NilFolder;
+	-- Use pcall to handle locked parent properties
+	pcall(function()
+		Ins.Parent = Parent or Compkiller.NilFolder;
+	end);
 end;
 
 function Compkiller:SetAllText(flags : {[string] : string})
@@ -10047,6 +10054,27 @@ function Compkiller.new(Config : Window)
 			end;
 		end;
 
+		-- Clean up WindowsNil references BEFORE destroying
+		-- This prevents errors from trying to set parent on locked/destroyed instances
+		if Compkiller.WindowsNil and WindowArgs.Root then
+			local elementsToRemove = {};
+			for element, window in next, Compkiller.WindowsNil do
+				if window == WindowArgs.Root then
+					-- Try to safely set parent to nil if element still exists
+					if element and typeof(element) == "Instance" and element.Parent then
+						pcall(function()
+							element.Parent = nil;
+						end);
+					end;
+					table.insert(elementsToRemove, element);
+				end;
+			end;
+			-- Remove all references
+			for _, element in next, elementsToRemove do
+				Compkiller.WindowsNil[element] = nil;
+			end;
+		end;
+
 		-- Remove from Compkiller.Windows
 		if WindowArgs.Root then
 			local windowIndex = table.find(Compkiller.Windows, WindowArgs.Root);
@@ -10055,18 +10083,11 @@ function Compkiller.new(Config : Window)
 			end;
 		end;
 
-		-- Clean up WindowsNil references
-		if Compkiller.WindowsNil then
-			for element, window in next, Compkiller.WindowsNil do
-				if window == WindowArgs.Root then
-					Compkiller.WindowsNil[element] = nil;
-				end;
-			end;
-		end;
-
-		-- Destroy the root ScreenGui and all children
+		-- Destroy the root ScreenGui and all children (use pcall to catch any errors)
 		if WindowArgs.Root then
-			WindowArgs.Root:Destroy();
+			pcall(function()
+				WindowArgs.Root:Destroy();
+			end);
 			WindowArgs.Root = nil;
 		end;
 

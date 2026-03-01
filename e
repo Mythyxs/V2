@@ -373,18 +373,18 @@ local Compkiller = {
 };
 
 Compkiller.Colors = {
-	Highlight = Color3.fromRGB(17, 238, 253),
-	Toggle = Color3.fromRGB(14, 203, 213),
-	Risky = Color3.fromRGB(251, 255, 39),
-	BGDBColor = Color3.fromRGB(22, 24, 29),
-	BlockColor = Color3.fromRGB(28, 29, 34),
-	StrokeColor = Color3.fromRGB(37, 38, 43),
-	SwitchColor = Color3.fromRGB(255, 255, 255),
-	DropColor = Color3.fromRGB(33, 35, 39),
-	MouseEnter = Color3.fromRGB(55, 58, 65),
-	BlockBackground = Color3.fromRGB(39, 40, 47),
-	LineColor = Color3.fromRGB(65, 65, 65),
-	HighStrokeColor = Color3.fromRGB(55, 56, 63),
+	Highlight = Color3.fromRGB(201, 179, 195), -- accent: #c9b3c3 (light lavender highlight)
+	Toggle = Color3.fromRGB(103, 84, 133), -- primary: #675485 (main accent)
+	Risky = Color3.fromRGB(251, 255, 39), -- Keep yellow for warnings
+	BGDBColor = Color3.fromRGB(22, 24, 29), -- Keep dark background
+	BlockColor = Color3.fromRGB(40, 34, 47), -- #28222f
+	StrokeColor = Color3.fromRGB(79, 58, 107), -- primary-dark: #4f3a6b (darker accent for edges)
+	SwitchColor = Color3.fromRGB(229, 217, 229), -- accent-bright: #e5d9e5 (very light tint for text)
+	DropColor = Color3.fromRGB(103, 84, 133), -- primary: #675485 (main accent)
+	MouseEnter = Color3.fromRGB(229, 217, 229), -- accent-bright: #e5d9e5 (very light tint for hovers)
+	BlockBackground = Color3.fromRGB(103, 84, 133), -- primary: #675485 (main accent)
+	LineColor = Color3.fromRGB(79, 58, 107), -- primary-dark: #4f3a6b (darker accent)
+	HighStrokeColor = Color3.fromRGB(103, 84, 133), -- primary: #675485 (main accent)
 };
 
 Compkiller.Elements = {

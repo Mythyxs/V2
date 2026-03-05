@@ -9,6 +9,8 @@ local function AutoGK()
 
     local player = Players.LocalPlayer
     local char = player.Character or player.CharacterAdded:Wait()
+    local humanoid = char:WaitForChild("Humanoid")
+    local humanoidRootPart = char:WaitForChild("HumanoidRootPart")
 
     ------------------------------------------------------------------------
     -- FUNCTION: ball()
@@ -66,6 +68,8 @@ local function AutoGK()
     ------------------------------------------------------------------------
     local scripton = true
     local connections = {}
+    local holdingMB1 = false
+    local holdingMB2 = false
 
     local function onRenderStep()
         if not scripton then return end
@@ -77,21 +81,32 @@ local function AutoGK()
 
         local dist = (char.HumanoidRootPart.Position - theBall.Position).Magnitude
         local predictedPos = predictPosition(theBall.Velocity, theBall.Position)
-
+        
         -- Example threshold checks
-        if dist <= 70 and theBall.Velocity.Magnitude > 45 then -- 60 ping: dist 70 | 90 ping: dist 80
-            print("Ball velocity: " .. theBall.Velocity.Magnitude)
-            local humanoid = char:WaitForChild("Humanoid")
-            task.wait(1)
-            humanoid:MoveTo(predictedPos)
+        if dist <= 60 and theBall.Velocity.Magnitude > 20 then
+            if holdingMB2 then
+                humanoid:MoveTo(predictedPos)
+            elseif holdingMB1 and theBall.Velocity.Magnitude > 0.01 then
+                humanoid:MoveTo(theBall.Position)
+            end
 
             -- Add jump threshold logic
-            local headPosition = char.Head.Position
-            local jumpThreshold = headPosition.Y + 5
-            if predictedPos.Y > jumpThreshold then
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
-                task.wait(0.01)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+            if holdingMB1 or holdingMB2 then
+                local headPosition = char.Head.Position
+                local jumpThreshold = headPosition.Y + 3.5
+                if predictedPos.Y > jumpThreshold then
+                    task.wait(0.1) -- optional wait cuz niggas say i pre jump
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                    task.wait(0.01)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+                end
+
+                -- Tap 'W' key to send the ball forward (i think this helps i dont know)
+                if dist <= 5 then -- Adjust this threshold as needed
+                    --VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
+                    --task.wait(0.05)
+                    --VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
+                end
             end
         end
     end
@@ -100,17 +115,46 @@ local function AutoGK()
     table.insert(connections, steppedConnect)
 
     ------------------------------------------------------------------------
+    -- SET WALKSPEED AND PROPERTIES
+    ------------------------------------------------------------------------
+    local function setWalkspeedAndProperties()
+        local theBall = ball()
+        if theBall and (char.HumanoidRootPart.Position - theBall.Position).Magnitude <= 60 then
+            humanoid.WalkSpeed = 29
+        else
+            humanoid.WalkSpeed = 28
+        end
+        humanoidRootPart.CustomPhysicalProperties = PhysicalProperties.new(1, 0.300000012, 0.5, 1, 1)
+    end
+
+    local updateWalkspeed = true
+    local function updateWalkspeedLoop()
+        while updateWalkspeed do
+            setWalkspeedAndProperties()
+            wait(0.01)
+        end
+    end
+
+    local updateWalkspeedThread = coroutine.create(updateWalkspeedLoop)
+    coroutine.resume(updateWalkspeedThread)
+
+    ------------------------------------------------------------------------
     -- KEYBINDS:
-    --   Left Mouse Click => Toggle script on/off
+    --   Left Mouse Hold => Move to ball
+    --   Right Mouse Hold => Move to predicted position
     --   End => Fully terminate
     ------------------------------------------------------------------------
     local inputBeganConnect = UserInputService.InputBegan:Connect(function(input, gp)
         if gp then return end
 
-        if input.KeyCode == Enum.KeyCode.DPadLeft then
-            scripton = true
+        if input.UserInputType == Enum.UserInputType.MouseButton2 then
+            holdingMB2 = true
+        elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+            holdingMB1 = true
         elseif input.KeyCode == Enum.KeyCode.End then
             scripton = false
+            updateWalkspeed = false
+            humanoidRootPart.CustomPhysicalProperties = nil
 
             -- Disconnect all connections
             for _, conn in ipairs(connections) do
@@ -124,8 +168,10 @@ local function AutoGK()
     local inputEndedConnect = UserInputService.InputEnded:Connect(function(input, gp)
         if gp then return end
 
-        if input.KeyCode == Enum.KeyCode.DPadLeft then
-            scripton = false
+        if input.UserInputType == Enum.UserInputType.MouseButton2 then
+            holdingMB2 = false
+        elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+            holdingMB1 = false
         end
     end)
     table.insert(connections, inputEndedConnect)

@@ -1,0 +1,92 @@
+--forcegreen
+local RS = game:GetService("ReplicatedStorage")
+local shootingEvent = RS:WaitForChild("ShootingEvent")
+local player = game:GetService("Players").LocalPlayer
+local UIS = game:GetService("UserInputService")
+
+local isShooting = false
+local terminated = false
+local connections = {}
+local contestLevel = nil
+local doAutoGreen = false
+
+local function updateContest()
+    local char = player.Character
+    if not char then contestLevel = nil return end
+    local raw = char:GetAttribute("Contest")
+    if typeof(raw) == "number" then
+        contestLevel = raw <= 1.2 and 1 or (raw <= 2.2 and 2 or (raw <= 3.2 and 3 or (raw <= 4.2 and 4 or nil)))
+    else
+        contestLevel = nil
+    end
+end
+
+local function setupContestTracking()
+    local char = player.Character
+    if not char then return end
+    updateContest()
+    table.insert(connections, char:GetAttributeChangedSignal("Contest"):Connect(updateContest))
+end
+
+setupContestTracking()
+table.insert(connections, player.CharacterAdded:Connect(setupContestTracking))
+
+local function flashGreen()
+    if terminated then return end
+    local char = player.Character
+    if not char then return end
+    local parts = char:FindFirstChild("ShotMeter")
+        and char.ShotMeter:FindFirstChild("HalfCircle")
+        and char.ShotMeter.HalfCircle:FindFirstChild("MeterParts")
+    if not parts then return end
+    local perfectColor = Color3.fromRGB(8, 255, 70)
+    for i = 1, 200 do
+        local f = parts:FindFirstChild(tostring(i))
+        if f then
+            f.BackgroundColor3 = perfectColor
+            f.BorderColor3 = perfectColor
+        end
+    end
+end
+
+table.insert(connections, UIS.InputEnded:Connect(function(input)
+    if terminated then return end
+    if input.KeyCode == Enum.KeyCode.R and isShooting then
+        if doAutoGreen then
+            task.delay(0, flashGreen)
+        end
+    end
+    if input.KeyCode == Enum.KeyCode.End then
+        terminated = true
+        for _, c in pairs(connections) do c:Disconnect() end
+    end
+end))
+
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local args = {...}
+    local method = getnamecallmethod()
+
+    if not terminated and self == shootingEvent and method == "FireServer" then
+        if args[1] == "Start" then
+            isShooting = true
+            -- decide autogreen at shot start so both hook and flash use same decision
+            if contestLevel == 1 then
+                doAutoGreen = false
+            elseif contestLevel == 2 then
+                doAutoGreen = math.random(0, 1) == 1
+            else
+                doAutoGreen = true
+            end
+        elseif args[1] == "End" then
+            isShooting = false
+            if doAutoGreen then
+                args[3] = "GreenTiming"
+                args[5] = math.random(470, 570) / 1000
+            end
+            return oldNamecall(self, unpack(args))
+        end
+    end
+
+    return oldNamecall(self, ...)
+end)

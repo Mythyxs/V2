@@ -122,7 +122,7 @@ local function AutoGK()
         if theBall and (char.HumanoidRootPart.Position - theBall.Position).Magnitude <= 60 then
             humanoid.WalkSpeed = 29
         else
-            humanoid.WalkSpeed = 28
+            humanoid.WalkSpeed = 28.3
         end
         humanoidRootPart.CustomPhysicalProperties = PhysicalProperties.new(1, 0.300000012, 0.5, 1, 1)
     end
@@ -147,9 +147,9 @@ local function AutoGK()
     local inputBeganConnect = UserInputService.InputBegan:Connect(function(input, gp)
         if gp then return end
 
-        if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.DPadRight then
             holdingMB2 = true
-        elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+        elseif input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.DPadLeft then
             holdingMB1 = true
         elseif input.KeyCode == Enum.KeyCode.End then
             scripton = false
@@ -168,9 +168,9 @@ local function AutoGK()
     local inputEndedConnect = UserInputService.InputEnded:Connect(function(input, gp)
         if gp then return end
 
-        if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.DPadRight then
             holdingMB2 = false
-        elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+        elseif input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.DPadLeft then
             holdingMB1 = false
         end
     end)
